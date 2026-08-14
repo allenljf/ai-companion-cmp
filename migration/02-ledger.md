@@ -77,10 +77,10 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 
 **Produces:** 後續 repository/usecase/viewmodel 引用的全部 DTO 與 domain 型別，名稱與欄位**與原始碼一致**（去 B2C 前綴）
 
-- [ ] `@SerializedName("x")` → `@SerialName("x")` + class 加 `@Serializable`，import 換 kotlinx
-- [ ] share-image / poster 相關 DTO 跳過不搬（`ShareImageV2*` 等，對照 API_CONTRACT.md）
-- [ ] B2C envelope 型別（`{metadata,data}`）不搬；mapping 檔案裡引用到的話直接攤平
-- [ ] 編譯驗證 + Commit `feat: model 層（Gson→kotlinx.serialization）`
+- [x] `@SerializedName("x")` → `@SerialName("x")` + class 加 `@Serializable`，import 換 kotlinx
+- [x] share-image / poster 相關 DTO 跳過不搬（`ShareImageV2*` 等，對照 API_CONTRACT.md）
+- [x] B2C envelope 型別（`{metadata,data}`）不搬；mapping 檔案裡引用到的話直接攤平
+- [x] 編譯驗證 + Commit `feat: model 層（Gson→kotlinx.serialization）`
 
 ### T5：repository 契約 + mock 實作
 
@@ -203,10 +203,10 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 
 | 來源（reference/android-src/） | 行數 | 目標 | Task | 狀態 |
 |---|---|---|---|---|
-| model/ApiModels.kt | 502 | model/ApiModels.kt | T4 | ⬜ |
-| model/DomainModels.kt | 465 | model/DomainModels.kt | T4 | ⬜ |
-| model/ModelMappings.kt | 255 | model/ModelMappings.kt | T4 | ⬜ |
-| model/TripProductSearchModels.kt | 21 | model/TripProductSearchModels.kt | T4 | ⬜ |
+| model/ApiModels.kt | 502 | model/ApiModels.kt | T4 | ✅ |
+| model/DomainModels.kt | 465 | model/DomainModels.kt | T4 | ✅ |
+| model/ModelMappings.kt | 255 | model/ModelMappings.kt | T4 | ✅ |
+| model/TripProductSearchModels.kt | 21 | model/TripProductSearchModels.kt | T4 | ✅ |
 | api-service/ICompanionApiService.kt | 93 | —（mock 直接實作 repository；T17 才有 Ktor client） | T5/T17 | ⛔ |
 | api-service/ITripProductSearchApiService.kt | 19 | — 同上 | T5/T17 | ⛔ |
 | domain-contract/CompanionRepository.kt | 167 | data/CompanionRepository.kt | T5 | ⬜ |
@@ -239,3 +239,7 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 ## 決策補充紀錄
 
 （執行中臨場決定的事記在這裡，例如 ViewModel 海報分支的處理方式、被過濾掉的 icon 清單）
+
+- T3：50 個 icon 過濾掉 14 個海報專用（6 hero + 1 stamp + 7 tag fallback，僅被 PosterFallbackAssets.kt 引用），實搬 36 個
+- T4：`TravelReviseDataResponse.changedSummary` 由 Gson JsonElement 改為 kotlinx JsonElement（JVM-only 型別 iOS 編不過），mapping 三分支語意經審查確認不變
+- T4：QuizGallery 型別保留（社群牆走假資料仍需要），share-image 鏈路共跳過 4 DTO + 4 domain 型別 + 2 mapping
