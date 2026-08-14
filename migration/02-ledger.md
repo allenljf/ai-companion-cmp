@@ -242,6 +242,10 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 
 （執行中臨場決定的事記在這裡，例如 ViewModel 海報分支的處理方式、被過濾掉的 icon 清單）
 
+- T10：SimpleDateFormat→手寫曆法換算（Hinnant civil_from_days，reviewer 交叉驗算通過）；UTC 日界差異記入已知問題
+- T11/T12/T13：CompanionAsyncImage（Coil）以佔位版實作——T13 定義原名共用版，T11/T12 各有私有佔位，最終 review 收斂；`// TODO: image loading`
+- T12：deeplink 3 處 onClick 改 no-op 保留外觀；LocalConfiguration.screenHeightDp→LocalWindowInfo.containerSize 換算（審查確認語意等價）
+- T13：拆 3 檔（CompanionRootScreen/QuizScreens/ResultScreens，沿原檔章節斷面）；跳過 6 個海報鏈路 @Composable；結果頁底部欄取原檔 no-poster fallback 分支，BottomSheet 剪 4 個海報項留 6 個 nav 項；分享鈕 no-op 待 T15；原檔無 BackHandler，返回鍵接線歸 T14
 - T8：海報鏈路移除清單見 task-T8 報告（8 個 method + ShareImageV2State + 建構子 3 參數 + onCleared 空殼）；java.util.UUID→kotlin.uuid.Uuid、System.currentTimeMillis→kotlin.time.Clock（審查確認語意等價）
 - T9：DS 元件參數改名對照（T10–13 搬畫面時要一起改）：`kkTagColor`→`tagColor`（去 KK 化優先於同簽章）、`KKButton.leadingIcon: @DrawableRes Int`→`Painter?`（呼叫點改 painterResource）、`KKTextField.placeholderTextStringType: StringType`→`placeholder: String`；enum 只保留畫面用到的 variant
 - T5：介面移除 `fetchShareImageV2`（海報鏈路）與 `isMockEnabled`（reference 中無呼叫端）；CompanionApiException 79→19 行（去 B2C envelope 解析）；補中性型別 TripProductCard/TripProductSearchResult；軟失敗開關 = CompanionMockConfig.forceFailReason
