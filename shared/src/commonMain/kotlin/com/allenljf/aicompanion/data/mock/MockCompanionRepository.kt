@@ -1,6 +1,7 @@
 package com.allenljf.aicompanion.data.mock
 
 import com.allenljf.aicompanion.data.CompanionRepository
+import com.allenljf.aicompanion.data.LocalCompanionStore
 import com.allenljf.aicompanion.model.AiPartnerResult
 import com.allenljf.aicompanion.model.CityChatMessage
 import com.allenljf.aicompanion.model.CompanionProfile
@@ -26,16 +27,10 @@ import com.allenljf.aicompanion.model.TripProductMaterial
  * [CompanionRepository] 的 mock 實作：不打真的網路，直接回 [MockData] 準備好的寫實假資料，
  * 形狀依 migration/API_CONTRACT.md。每支方法都先 `MockData.networkDelay()`（300~800ms）模擬網路。
  *
- * 本地持久化方法（getLocalCompanion/getQuizHistory/getSavedTrips 等）暫用記憶體內的 `var` 頂多撐一個
- * App session——T6（本地儲存層）會換成 `LocalCompanionStore`（multiplatform-settings 持久化），
- * 屆時把這幾個方法的實作換成注入的 store 即可，介面簽章不需要改。
+ * 本地持久化方法（getLocalCompanion/getQuizHistory/getSavedTrips 等）委派給注入的 [LocalCompanionStore]
+ * （multiplatform-settings 持久化），跨 App session 保留。
  */
-class MockCompanionRepository : CompanionRepository {
-
-    private var localCompanion: CompanionProfile? = null
-    private var shownQuestionCounts: Map<String, Int> = emptyMap()
-    private var quizHistory: List<QuizHistoryRecord> = emptyList()
-    private var savedTrips: List<SavedTripRecord> = emptyList()
+class MockCompanionRepository(private val localStore: LocalCompanionStore) : CompanionRepository {
 
     // travel-revise 在同一個聊天室內會被連續呼叫多次；用呼叫次數讓找不到關鍵字時的 fallback 情境輪替，
     // 避免每次都回一模一樣的內容（見 MockData.travelRevise 的 callCount 參數）。
@@ -100,40 +95,40 @@ class MockCompanionRepository : CompanionRepository {
 
     override suspend fun getLocalCompanion(): Result<CompanionProfile?> {
         MockData.networkDelay()
-        return Result.success(localCompanion)
+        return Result.success(localStore.getLocalCompanion())
     }
 
     override suspend fun saveLocalCompanion(profile: CompanionProfile): Result<Unit> {
         MockData.networkDelay()
-        localCompanion = profile
+        localStore.saveLocalCompanion(profile)
         return Result.success(Unit)
     }
 
     override suspend fun clearLocalCompanion(): Result<Unit> {
         MockData.networkDelay()
-        localCompanion = null
+        localStore.clearLocalCompanion()
         return Result.success(Unit)
     }
 
     override suspend fun getShownQuestionCounts(): Result<Map<String, Int>> {
         MockData.networkDelay()
-        return Result.success(shownQuestionCounts)
+        return Result.success(localStore.getShownQuestionCounts())
     }
 
     override suspend fun saveShownQuestionCounts(counts: Map<String, Int>): Result<Unit> {
         MockData.networkDelay()
-        shownQuestionCounts = counts
+        localStore.saveShownQuestionCounts(counts)
         return Result.success(Unit)
     }
 
     override suspend fun getQuizHistory(): Result<List<QuizHistoryRecord>> {
         MockData.networkDelay()
-        return Result.success(quizHistory)
+        return Result.success(localStore.getQuizHistory())
     }
 
     override suspend fun saveQuizHistory(records: List<QuizHistoryRecord>): Result<Unit> {
         MockData.networkDelay()
-        quizHistory = records
+        localStore.saveQuizHistory(records)
         return Result.success(Unit)
     }
 
@@ -273,12 +268,12 @@ class MockCompanionRepository : CompanionRepository {
 
     override suspend fun getSavedTrips(): Result<List<SavedTripRecord>> {
         MockData.networkDelay()
-        return Result.success(savedTrips)
+        return Result.success(localStore.getSavedTrips())
     }
 
     override suspend fun saveSavedTrips(records: List<SavedTripRecord>): Result<Unit> {
         MockData.networkDelay()
-        savedTrips = records
+        localStore.saveSavedTrips(records)
         return Result.success(Unit)
     }
 

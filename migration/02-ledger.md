@@ -100,8 +100,8 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 
 **Produces:** `class LocalCompanionStore(settings: Settings)`，提供 local companion / quiz history / saved trips / shown question counts 的存取，供 8 個 local UseCase 使用
 
-- [ ] 用 multiplatform-settings 實作，JSON 序列化存字串
-- [ ] 編譯驗證 + Commit `feat: 本地儲存層`
+- [x] 用 multiplatform-settings 實作，JSON 序列化存字串
+- [x] 編譯驗證 + Commit `feat: 本地儲存層`
 
 ### T7：UseCase 層
 

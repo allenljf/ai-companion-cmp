@@ -1,5 +1,7 @@
 package com.allenljf.aicompanion.model
 
+import kotlinx.serialization.Serializable
+
 data class AiPartnerResult(
     val personality: List<CompanionTraitOption> = emptyList(),
     val speechStyle: List<CompanionTraitOption> = emptyList(),
@@ -61,6 +63,8 @@ data class QuizOption(
     val tagLabel: String = ""
 )
 
+// @Serializable：QuizHistoryRecord（本地持久化，見 LocalCompanionStore）需要序列化這個巢狀型別
+@Serializable
 data class QuizCompletionResult(
     val quizCompletionId: Long = 0,
     val travelIdentity: String = "",
@@ -122,6 +126,8 @@ data class QuizGalleryItem(
     val hasPoster: Boolean get() = !shareImageUrl.isNullOrBlank()
 }
 
+// @Serializable：QuizHistoryRecord（本地持久化）需要序列化這個巢狀型別
+@Serializable
 data class CompanionSnapshot(
     val name: String = "",
     val introduction: String = "",
@@ -133,6 +139,7 @@ data class CompanionSnapshot(
 )
 
 /** 測驗結果歷史紀錄：完整結果 + 海報素材本機路徑（產圖完成後回填）+ 當下旅伴快照 + 建立時間。 */
+@Serializable
 data class QuizHistoryRecord(
     val result: QuizCompletionResult = QuizCompletionResult(),
     // share-image-v2：本地離屏合成好的完整海報 PNG（僅供列表縮圖使用），存在裝置本機檔案系統的絕對路徑（非 URL）
@@ -278,6 +285,8 @@ data class RecommendCityResult(
 }
 
 /** travel-guide（2026-08 狀態機式 schema）逐日行程的單一項目。 */
+// @Serializable：SavedTripRecord/QuizHistoryRecord 都可能經 TravelGuideDay 巢狀持久化這個型別
+@Serializable
 data class TravelGuideDayItem(
     // 標題：地點/活動簡短名稱；後端尚未提供時為空字串，displayTitle 會退回用 text
     val name: String = "",
@@ -318,6 +327,8 @@ data class TravelGuideDayItem(
     }
 }
 
+// @Serializable：SavedTripRecord（「我的旅程」本地持久化，見 LocalCompanionStore）需要序列化這個巢狀型別
+@Serializable
 data class TravelGuideDay(
     val day: Int = 0,
     // planned / unplanned（discussing 為多輪對話狀態，單次生成不會出現）
@@ -389,6 +400,7 @@ class TravelPlanValidationException(message: String) : Exception(message)
  * 「我的旅程」本地紀錄：後端不儲存行程，travel-guide 結果由 App 端存 DataStore。
  * [preferences] 一併保存：回訪後開啟行程仍能繼續請旅伴修改（travel-revise 帶原偏好維持風格）。
  */
+@Serializable
 data class SavedTripRecord(
     // 成果頁標題（「{旅伴名} × 你的{城市}」，儲存當下組好）
     val title: String = "",
@@ -399,6 +411,8 @@ data class SavedTripRecord(
     val createdAt: Long = 0L
 )
 
+// @Serializable：本地旅伴持久化（見 LocalCompanionStore）
+@Serializable
 data class CompanionProfile(
     val name: String = "",
     val personality: List<String> = emptyList(),
