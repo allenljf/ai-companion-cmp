@@ -316,7 +316,7 @@ private fun TripDayBlock(day: TravelGuideDay, onClick: () -> Unit) {
                     Text(
                         item.text,
                         fontSize = Tokens.fontSize2,
-                        color = if (item.isLogistics) Tokens.colorTextMedium else Tokens.colorTextDarker,
+                        color = if (item.isLogistics) Tokens.colorTextMedium else Tokens.colorTextDark,
                     )
                 }
             }
