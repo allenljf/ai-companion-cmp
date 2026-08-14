@@ -107,9 +107,9 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 
 **Files:** Create `domain/*.kt`；來源 `reference/android-src/domain-usecase/`（27 檔）
 
-- [ ] 26 個照搬（多數 <45 行，純轉呼叫）；**跳過 `FetchShareImageV2UseCase`**
-- [ ] `IsChineseLanguageUseCase`：原本讀 Android locale → demo 直接回傳 true（寫死繁中），標 `// TODO: locale`
-- [ ] 編譯驗證 + Commit `feat: usecase 層`
+- [x] 26 個照搬（多數 <45 行，純轉呼叫）；**跳過 `FetchShareImageV2UseCase`**
+- [x] `IsChineseLanguageUseCase`：原本讀 Android locale → demo 直接回傳 true（寫死繁中），標 `// TODO: locale`
+- [x] 編譯驗證 + Commit `feat: usecase 層`
 
 ### T8：UI State + ViewModel（★ 核心）
 
@@ -216,7 +216,7 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 | data-repository/CompanionOrderRepositoryImpl.kt | 83 | data/mock/MockCompanionOrderRepository.kt | T5 | ✅ |
 | data-repository/TripProductSearchRepositoryImpl.kt | 28 | data/mock/MockTripProductSearchRepository.kt | T5 | ✅ |
 | data-repository/CompanionApiException.kt | 79 | data/CompanionApiException.kt（瘦身，拿掉 B2C envelope 解析） | T5 | ✅ |
-| domain-usecase/（26 檔，扣 ShareImageV2） | ~600 | domain/*.kt | T7 | ⬜ |
+| domain-usecase/（26 檔，扣 ShareImageV2） | ~600 | domain/*.kt | T7 | ✅ |
 | domain-usecase/FetchShareImageV2UseCase.kt | 21 | — | — | ⛔ |
 | feature/viewModel/AiCompanionStates.kt | 299 | viewmodel/AiCompanionStates.kt | T8 | ⬜ |
 | feature/viewModel/AiCompanionViewModel.kt | 1,610 | viewmodel/AiCompanionViewModel.kt | T8 | ⬜ |
@@ -243,3 +243,4 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 - T3：50 個 icon 過濾掉 14 個海報專用（6 hero + 1 stamp + 7 tag fallback，僅被 PosterFallbackAssets.kt 引用），實搬 36 個
 - T4：`TravelReviseDataResponse.changedSummary` 由 Gson JsonElement 改為 kotlinx JsonElement（JVM-only 型別 iOS 編不過），mapping 三分支語意經審查確認不變
 - T4：QuizGallery 型別保留（社群牆走假資料仍需要），share-image 鏈路共跳過 4 DTO + 4 domain 型別 + 2 mapping
+- T7：`IsChineseLanguageUseCase` 依 brief 指示改為無參數建構、直接回傳 `true`（不再持有 `CompanionRepository`），取代原本「委派給 `repository.isChineseLanguage()`」的寫法；`CompanionRepository.isChineseLanguage()` 介面方法保留（T5 mock 已回傳 true），但目前無人呼叫，屬預期的孤兒方法
