@@ -56,6 +56,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.allenljf.aicompanion.model.QuizCompletionResult
 import com.allenljf.aicompanion.model.QuizHistoryRecord
+import com.allenljf.aicompanion.platform.rememberShareText
 import com.allenljf.aicompanion.theme.Tokens
 import com.allenljf.aicompanion.ui.components.AppButton
 import com.allenljf.aicompanion.ui.components.AppDialog
@@ -100,6 +101,7 @@ internal fun ResultScreen(
     val analysis by viewModel.analysisState.collectAsStateWithLifecycle()
     val result = (analysis as? AnalysisState.Success)?.result
     var showBottomSheet by remember { mutableStateOf(false) }
+    val shareText = rememberShareText()
 
     Box(
         modifier = Modifier
@@ -194,7 +196,13 @@ internal fun ResultScreen(
                             buttonState = ButtonState.ENABLED,
                             buttonSizeType = ButtonSizeType.Lg,
                             isFullWidth = true,
-                            onClick = {}, // TODO: T15 shareText 接線
+                            onClick = {
+                                // 分享文字用結果頁現有文案風格組出人格稱號＋命定城市
+                                shareText(
+                                    "我的旅行人格是${result?.travelIdentity.orEmpty()}，" +
+                                        "命定城市是${result?.destinationCn.orEmpty()}！", // TODO: i18n
+                                )
+                            },
                         )
                     }
                     Box(Modifier.weight(1f).testTag("companion_result_more_actions_btn")) {

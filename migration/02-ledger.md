@@ -177,8 +177,8 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 
 **Files:** Create `platform/ShareText.kt`（expect fun shareText(text: String)）、`platform/ShareText.android.kt`（`Intent.ACTION_SEND`，context 由 Koin android context 取）、`platform/ShareText.ios.kt`（`UIActivityViewController`）
 
-- [ ] 三檔實作 + 結果頁分享鈕接上
-- [ ] 編譯驗證 + Commit `feat: 文字分享 expect/actual`
+- [x] 三檔實作 + 結果頁分享鈕接上
+- [x] 編譯驗證 + Commit `feat: 文字分享 expect/actual`
 
 ### T16：雙平台實跑驗證
 
@@ -225,7 +225,7 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 | feature/presentation/compose/AiCompanionTripScreens.kt | 1,148 | ui/TripScreens.kt | T12 | ✅ |
 | feature/presentation/compose/AiCompanionScreens.kt | 4,663 | ui/CompanionRootScreen.kt(452) + ui/QuizScreens.kt(2,297) + ui/ResultScreens.kt(1,118) | T13 | ✅ |
 | feature/presentation/compose/AiCompanionPhase2Previews.kt | 311 | — | — | ⛔ |
-| feature/presentation/compose/CompanionShareActions.kt | 175 | platform/ShareText.kt（重寫為純文字分享） | T15 | ⬜ |
+| feature/presentation/compose/CompanionShareActions.kt | 175 | platform/ShareText.kt（重寫為純文字分享） | T15 | ✅ |
 | feature/presentation/poster/（7 檔） | ~880 | — 海報全鏈路不做 | — | ⛔ |
 | feature/presentation/AiCompanionActivity.kt | 82 | —（CMP 進入點取代） | T14 | ⛔ |
 | feature/di/AiCompanionAnnotationModule.kt | 76 | di/AppModule.kt（手寫重寫） | T14 | ✅ |
@@ -242,6 +242,7 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 
 （執行中臨場決定的事記在這裡，例如 ViewModel 海報分支的處理方式、被過濾掉的 icon 清單）
 
+- T15：`platform/ShareText.kt` 用 `@Composable expect fun rememberShareText(): (String) -> Unit`（非裸 `expect fun shareText(text: String)`）——兩端都要「目前畫面在哪」才能發分享：Android 用 `LocalContext.current`、iOS 用目前最上層 `rootViewController`，兩者都是 Compose 才知道的資訊，裸 expect fun 得另外用 Koin 塞 context/ViewController 單例反而更繞。Android actual：`Intent.ACTION_SEND` + `Intent.createChooser`，context 非 `Activity` 時補 `FLAG_ACTIVITY_NEW_TASK` 保底。iOS actual：`UIActivityViewController` 從 keyWindow 往下找最上層已 present 的 VC present；popover（iPad）沒設 `sourceView`/`sourceRect` 會直接 crash，接上 `presenter.view`/`presenter.view.bounds` 當 fallback 錨點（demo 目標 iPhone，不精修箭頭位置）。編譯debug 花絮：`UIViewController.popoverPresentationController` 在這個 Kotlin/Native cinterop 版本是**擴充屬性**而非成員屬性，光 import `UIActivityViewController`/`UIViewController` 編不過（`Unresolved reference`），要多 `import platform.UIKit.popoverPresentationController` 才解得到。結果頁分享鈕文案：「我的旅行人格是＜travelIdentity＞，命定城市是＜destinationCn＞！」（`// TODO: i18n`）
 - T14：`AiCompanionViewModel` 建構子 26 參數超過 koin-core-viewmodel `viewModelOf` 的 reified 上限（22），改用具名參數 `viewModel { AiCompanionViewModel(getAiPartnerUseCase = get(), ...) }`，避免同型別（多個 UseCase 共用 `CompanionRepository`）位置性 `get()` 對錯位
 - T14：App 進入點起始頁邏輯——`loadLocalCompanion()` 完成前 `hasLocalCompanion` 為 null，顯示簡易 loading（CircularProgressIndicator），避免尚未判定就先閃一次錯誤起始頁；`AiCompanionRoot.onFinish` 因 demo 只有這一個 feature、沒有外層畫面可退，訂為 no-op（原始碼此處會 finish Activity）
 - T14：原始碼 `AiCompanionScreens.kt` 全檔無 `BackHandler`，Android 實體返回鍵沿用系統預設行為，本任務未額外接線（T13 已確認過此點，見上）
