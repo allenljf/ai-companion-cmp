@@ -168,10 +168,10 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 
 **Files:** Create `di/AppModule.kt`、Modify `App.kt`；Delete `Greeting.kt`、`GreetingUtil.kt`、`Platform*.kt`（骨架樣板）；來源參照 `feature/di/AiCompanionAnnotationModule.kt`
 
-- [ ] 手寫 Koin module：3 個 mock repository（`single`）+ LocalCompanionStore + 全部 UseCase（`factory`）+ ViewModel
-- [ ] `App.kt` = AppTheme + KoinApplication + Root 畫面；Android `MainActivity` 與 iOS `MainViewController` 接上
-- [ ] 骨架樣板檔與其測試一併刪除
-- [ ] 編譯驗證 + Commit `feat: DI 與進入點串接`
+- [x] 手寫 Koin module：3 個 mock repository（`single`）+ LocalCompanionStore + 全部 UseCase（`factory`）+ ViewModel
+- [x] `App.kt` = AppTheme + KoinApplication + Root 畫面；Android `MainActivity` 與 iOS `MainViewController` 接上
+- [x] 骨架樣板檔與其測試一併刪除
+- [x] 編譯驗證 + Commit `feat: DI 與進入點串接`
 
 ### T15：文字分享 expect/actual（唯一平台特化）
 
@@ -228,7 +228,7 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 | feature/presentation/compose/CompanionShareActions.kt | 175 | platform/ShareText.kt（重寫為純文字分享） | T15 | ⬜ |
 | feature/presentation/poster/（7 檔） | ~880 | — 海報全鏈路不做 | — | ⛔ |
 | feature/presentation/AiCompanionActivity.kt | 82 | —（CMP 進入點取代） | T14 | ⛔ |
-| feature/di/AiCompanionAnnotationModule.kt | 76 | di/AppModule.kt（手寫重寫） | T14 | ⬜ |
+| feature/di/AiCompanionAnnotationModule.kt | 76 | di/AppModule.kt（手寫重寫） | T14 | ✅ |
 | design-system/USED_TOKENS.md（57 token） | — | theme/Tokens.kt | T2 | ✅ |
 | design-system/USED_DRAWABLES.md（50 icon） | — | composeResources/drawable/（36 個，過濾 14 個海報專用） | T3 | ✅ |
 
@@ -242,6 +242,9 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 
 （執行中臨場決定的事記在這裡，例如 ViewModel 海報分支的處理方式、被過濾掉的 icon 清單）
 
+- T14：`AiCompanionViewModel` 建構子 26 參數超過 koin-core-viewmodel `viewModelOf` 的 reified 上限（22），改用具名參數 `viewModel { AiCompanionViewModel(getAiPartnerUseCase = get(), ...) }`，避免同型別（多個 UseCase 共用 `CompanionRepository`）位置性 `get()` 對錯位
+- T14：App 進入點起始頁邏輯——`loadLocalCompanion()` 完成前 `hasLocalCompanion` 為 null，顯示簡易 loading（CircularProgressIndicator），避免尚未判定就先閃一次錯誤起始頁；`AiCompanionRoot.onFinish` 因 demo 只有這一個 feature、沒有外層畫面可退，訂為 no-op（原始碼此處會 finish Activity）
+- T14：原始碼 `AiCompanionScreens.kt` 全檔無 `BackHandler`，Android 實體返回鍵沿用系統預設行為，本任務未額外接線（T13 已確認過此點，見上）
 - T10：SimpleDateFormat→手寫曆法換算（Hinnant civil_from_days，reviewer 交叉驗算通過）；UTC 日界差異記入已知問題
 - T11/T12/T13：CompanionAsyncImage（Coil）以佔位版實作——T13 定義原名共用版，T11/T12 各有私有佔位，最終 review 收斂；`// TODO: image loading`
 - T12：deeplink 3 處 onClick 改 no-op 保留外觀；LocalConfiguration.screenHeightDp→LocalWindowInfo.containerSize 換算（審查確認語意等價）

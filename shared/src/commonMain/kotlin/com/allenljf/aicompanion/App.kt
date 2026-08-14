@@ -1,48 +1,49 @@
 package com.allenljf.aicompanion
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.safeContentPadding
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import org.jetbrains.compose.resources.painterResource
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.allenljf.aicompanion.di.appModule
+import com.allenljf.aicompanion.theme.AppTheme
+import com.allenljf.aicompanion.ui.AiCompanionRoot
+import com.allenljf.aicompanion.ui.AiCompanionStep
+import com.allenljf.aicompanion.viewmodel.AiCompanionViewModel
+import org.koin.compose.KoinApplication
+import org.koin.compose.viewmodel.koinViewModel
 
-import aicompanion.shared.generated.resources.Res
-import aicompanion.shared.generated.resources.compose_multiplatform
-
+/**
+ * App 進入點：啟動獨立 Koin context（demo 只有這一個 feature，不需要跨畫面共用的全域 context）。
+ * 起始頁依本地是否已有旅伴決定（loadLocalCompanion 之後看 hasLocalCompanion）；
+ * null＝讀取中，顯示簡單 loading，避免尚未判定就先閃一次錯誤起始頁。
+ */
 @Composable
 @Preview
 fun App() {
-    MaterialTheme {
-        var showContent by remember { mutableStateOf(false) }
-        Column(
-            modifier = Modifier
-                .background(MaterialTheme.colorScheme.primaryContainer)
-                .safeContentPadding()
-                .fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Button(onClick = { showContent = !showContent }) {
-                Text("Click me!")
-            }
-            AnimatedVisibility(showContent) {
-                val greeting = remember { Greeting().greet() }
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Image(painterResource(Res.drawable.compose_multiplatform), null)
-                    Text("Compose: $greeting")
+    KoinApplication(application = { modules(appModule) }) {
+        AppTheme {
+            val viewModel = koinViewModel<AiCompanionViewModel>()
+            val hasLocalCompanion by viewModel.hasLocalCompanion.collectAsStateWithLifecycle()
+            LaunchedEffect(Unit) { viewModel.loadLocalCompanion() }
+
+            val startStep = hasLocalCompanion
+            if (startStep == null) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
                 }
+            } else {
+                AiCompanionRoot(
+                    viewModel = viewModel,
+                    startStep = if (startStep) AiCompanionStep.Home else AiCompanionStep.CreateCompanion,
+                    // demo 只有這一個 feature，沒有外層畫面可退：onFinish 保留 no-op
+                    onFinish = {},
+                )
             }
         }
     }
