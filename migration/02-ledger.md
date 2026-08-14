@@ -240,6 +240,9 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 
 （執行中臨場決定的事記在這裡，例如 ViewModel 海報分支的處理方式、被過濾掉的 icon 清單）
 
+- T5：介面移除 `fetchShareImageV2`（海報鏈路）與 `isMockEnabled`（reference 中無呼叫端）；CompanionApiException 79→19 行（去 B2C envelope 解析）；補中性型別 TripProductCard/TripProductSearchResult；軟失敗開關 = CompanionMockConfig.forceFailReason
+- T6：LocalCompanionStore 用 multiplatform-settings + JSON；壞資料防護 decodeOrNull（壞 JSON → 移除 + 回 null/空）
+- T7：IsChineseLanguageUseCase 寫死 true，`CompanionRepository.isChineseLanguage()` 成孤兒方法（T17 接真後端時再清）
 - T3：50 個 icon 過濾掉 14 個海報專用（6 hero + 1 stamp + 7 tag fallback，僅被 PosterFallbackAssets.kt 引用），實搬 36 個
 - T4：`TravelReviseDataResponse.changedSummary` 由 Gson JsonElement 改為 kotlinx JsonElement（JVM-only 型別 iOS 編不過），mapping 三分支語意經審查確認不變
 - T4：QuizGallery 型別保留（社群牆走假資料仍需要），share-image 鏈路共跳過 4 DTO + 4 domain 型別 + 2 mapping
