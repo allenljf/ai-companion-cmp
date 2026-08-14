@@ -20,3 +20,27 @@ data class TripProductSearchRequest(
     // 必填：後端用來識別呼叫來源／頁面情境；沿用既有搜尋頁的預設值，避免自訂值不在後端允許清單內
     @SerialName("page_name") val pageName: String = "product_list_mobile"
 )
+
+/**
+ * T5 補上：原本重用 KKday B2C 的 `B2CProductCardData`（40+ 個欄位，含價格顯示規則、多種 deprecated 別名），
+ * 這裡只留行程頁景點卡實際會用到的欄位（對照 `AiCompanionTripScreens.kt` 卡片渲染邏輯：
+ * 圖片、名稱、評分、幣別符號＋價格），中性命名、去 B2C 化。
+ */
+data class TripProductCard(
+    val id: String = "",
+    val name: String = "",
+    val imageUrl: String = "",
+    val price: Double = 0.0,
+    val currencySymbol: String = "",
+    val ratingStar: Double = 0.0,
+    val ratingCount: Int = 0,
+)
+
+/**
+ * @param totalCount 該關鍵字實際符合的商品總數（來自 API `metadata.pagination.total_count`），
+ * 用於「還有 N 項相關商品」文案——不可用 [products].size 代替，因為那只是本次抓回的筆數上限。
+ */
+data class TripProductSearchResult(
+    val products: List<TripProductCard> = emptyList(),
+    val totalCount: Int = 0,
+)

@@ -88,11 +88,11 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 
 **Interfaces:** Produces：與原 domain-contract 同名同簽章的三個介面（suspend fun，回傳 domain model）。**Retrofit 的 `ICompanionApiService` 不移植**，mock 直接實作 repository 介面。
 
-- [ ] 三個介面照搬（去 KKday 命名），`CompanionApiException` 照搬
-- [ ] Mock 實作：回應形狀完全依 `API_CONTRACT.md`；`travel-guide`/`travel-revise` 準備**多組預錄回應**輪替，模擬自然語言修改的動態感；每支加 300–800ms delay 模擬網路
-- [ ] 軟失敗保留：MockData 內至少一組 `fail_reason` 有值的案例可切換
-- [ ] share-image 相關方法不搬；海報相關方法從介面移除
-- [ ] 編譯驗證 + Commit `feat: repository 契約與 mock 實作`
+- [x] 三個介面照搬（去 KKday 命名），`CompanionApiException` 照搬（瘦身：拿掉 B2C envelope 解析邏輯，保留錯誤碼常數）
+- [x] Mock 實作：回應形狀完全依 `API_CONTRACT.md`；`travel-guide` 依城市選預錄範本（大阪/東京/首爾+通用 fallback）、`travel-revise` 依訊息關鍵字挑情境＋呼叫次數輪替 fallback，模擬自然語言修改的動態感；每支加 300–800ms delay 模擬網路
+- [x] 軟失敗保留：`CompanionMockConfig.forceFailReason` 開關，覆蓋 9 支 LLM 端點（quiz/quiz-completions/self-introduction/travel-summary 系列/recommend-city/travel-guide/travel-revise）
+- [x] share-image 相關方法不搬；`fetchShareImageV2` 與 `isMockEnabled`（無人呼叫的網路層開關）從介面移除
+- [x] 編譯驗證 + Commit `feat: repository 契約與 mock 實作`
 
 ### T6：本地儲存
 
@@ -209,13 +209,13 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 | model/TripProductSearchModels.kt | 21 | model/TripProductSearchModels.kt | T4 | ✅ |
 | api-service/ICompanionApiService.kt | 93 | —（mock 直接實作 repository；T17 才有 Ktor client） | T5/T17 | ⛔ |
 | api-service/ITripProductSearchApiService.kt | 19 | — 同上 | T5/T17 | ⛔ |
-| domain-contract/CompanionRepository.kt | 167 | data/CompanionRepository.kt | T5 | ⬜ |
-| domain-contract/CompanionOrderRepository.kt | 18 | data/CompanionOrderRepository.kt | T5 | ⬜ |
-| domain-contract/TripProductSearchRepository.kt | 20 | data/TripProductSearchRepository.kt | T5 | ⬜ |
-| data-repository/CompanionRepositoryImpl.kt | 555 | data/mock/MockCompanionRepository.kt（重寫為 mock） | T5 | ⬜ |
-| data-repository/CompanionOrderRepositoryImpl.kt | 83 | data/mock/MockCompanionOrderRepository.kt | T5 | ⬜ |
-| data-repository/TripProductSearchRepositoryImpl.kt | 28 | data/mock/MockTripProductSearchRepository.kt | T5 | ⬜ |
-| data-repository/CompanionApiException.kt | 79 | data/CompanionApiException.kt | T5 | ⬜ |
+| domain-contract/CompanionRepository.kt | 167 | data/CompanionRepository.kt | T5 | ✅ |
+| domain-contract/CompanionOrderRepository.kt | 18 | data/CompanionOrderRepository.kt | T5 | ✅ |
+| domain-contract/TripProductSearchRepository.kt | 20 | data/TripProductSearchRepository.kt | T5 | ✅ |
+| data-repository/CompanionRepositoryImpl.kt | 555 | data/mock/MockCompanionRepository.kt + data/mock/MockData.kt（重寫為 mock） | T5 | ✅ |
+| data-repository/CompanionOrderRepositoryImpl.kt | 83 | data/mock/MockCompanionOrderRepository.kt | T5 | ✅ |
+| data-repository/TripProductSearchRepositoryImpl.kt | 28 | data/mock/MockTripProductSearchRepository.kt | T5 | ✅ |
+| data-repository/CompanionApiException.kt | 79 | data/CompanionApiException.kt（瘦身，拿掉 B2C envelope 解析） | T5 | ✅ |
 | domain-usecase/（26 檔，扣 ShareImageV2） | ~600 | domain/*.kt | T7 | ⬜ |
 | domain-usecase/FetchShareImageV2UseCase.kt | 21 | — | — | ⛔ |
 | feature/viewModel/AiCompanionStates.kt | 299 | viewmodel/AiCompanionStates.kt | T8 | ⬜ |
