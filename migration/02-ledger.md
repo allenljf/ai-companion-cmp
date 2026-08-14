@@ -135,8 +135,8 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 
 **Files:** Create `ui/TripListScreen.kt`；來源 `AiCompanionTripListScreen.kt`（253行，0 Android 依賴）
 
-- [ ] 照搬，換 import（DS 元件→App*、R.drawable→Res.drawable）
-- [ ] 編譯驗證 + Commit `feat: TripList 畫面`
+- [x] 照搬，換 import（DS 元件→App*、R.drawable→Res.drawable）
+- [x] 編譯驗證 + Commit `feat: TripList 畫面`
 
 ### T11：Plan 畫面（材料開場 + 規劃聊天室）
 
@@ -220,7 +220,7 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 | domain-usecase/FetchShareImageV2UseCase.kt | 21 | — | — | ⛔ |
 | feature/viewModel/AiCompanionStates.kt | 299 | viewmodel/AiCompanionStates.kt | T8 | ✅ |
 | feature/viewModel/AiCompanionViewModel.kt | 1,610 | viewmodel/AiCompanionViewModel.kt | T8 | ✅ |
-| feature/presentation/compose/AiCompanionTripListScreen.kt | 253 | ui/TripListScreen.kt | T10 | ⬜ |
+| feature/presentation/compose/AiCompanionTripListScreen.kt | 253 | ui/TripListScreen.kt | T10 | ✅ |
 | feature/presentation/compose/AiCompanionPlanScreens.kt | 903 | ui/PlanScreens.kt | T11 | ⬜ |
 | feature/presentation/compose/AiCompanionTripScreens.kt | 1,148 | ui/TripScreens.kt | T12 | ⬜ |
 | feature/presentation/compose/AiCompanionScreens.kt | 4,663 | ui/CompanionScreens.kt（可拆檔） | T13 | ⬜ |
