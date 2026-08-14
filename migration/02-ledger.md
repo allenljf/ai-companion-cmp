@@ -117,10 +117,10 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 
 **Interfaces:** Produces：`AiCompanionViewModel`（繼承 jetbrains `androidx.lifecycle.ViewModel`）、`AiCompanionStep` enum、全部 UiState data class——**名稱簽章與原始碼一致**，畫面層照原樣引用。
 
-- [ ] `AiCompanionStates.kt` 照搬（1 處 Android 依賴換掉；題庫若引用 DCS 常數改寫死）
-- [ ] `AiCompanionViewModel.kt` 照搬，只處理 2 處 Android 依賴與 import 換名——**狀態機邏輯一行都不改**
-- [ ] 海報/分享圖相關的 state 與 method：**保留兜底或整段移除，以「編譯最小改動」為準則現場判斷**，移除的話在本檔記錄清單
-- [ ] 編譯驗證 + Commit `feat: 移植 ViewModel 狀態機`
+- [x] `AiCompanionStates.kt` 照搬（1 處 Android 依賴換掉；題庫若引用 DCS 常數改寫死）
+- [x] `AiCompanionViewModel.kt` 照搬，只處理 2 處 Android 依賴與 import 換名——**狀態機邏輯一行都不改**
+- [x] 海報/分享圖相關的 state 與 method：**保留兜底或整段移除，以「編譯最小改動」為準則現場判斷**，移除的話在本檔記錄清單
+- [x] 編譯驗證 + Commit `feat: 移植 ViewModel 狀態機`
 
 ### T9：輕量 DS 元件
 
@@ -218,8 +218,8 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 | data-repository/CompanionApiException.kt | 79 | data/CompanionApiException.kt（瘦身，拿掉 B2C envelope 解析） | T5 | ✅ |
 | domain-usecase/（26 檔，扣 ShareImageV2） | ~600 | domain/*.kt | T7 | ✅ |
 | domain-usecase/FetchShareImageV2UseCase.kt | 21 | — | — | ⛔ |
-| feature/viewModel/AiCompanionStates.kt | 299 | viewmodel/AiCompanionStates.kt | T8 | ⬜ |
-| feature/viewModel/AiCompanionViewModel.kt | 1,610 | viewmodel/AiCompanionViewModel.kt | T8 | ⬜ |
+| feature/viewModel/AiCompanionStates.kt | 299 | viewmodel/AiCompanionStates.kt | T8 | ✅ |
+| feature/viewModel/AiCompanionViewModel.kt | 1,610 | viewmodel/AiCompanionViewModel.kt | T8 | ✅ |
 | feature/presentation/compose/AiCompanionTripListScreen.kt | 253 | ui/TripListScreen.kt | T10 | ⬜ |
 | feature/presentation/compose/AiCompanionPlanScreens.kt | 903 | ui/PlanScreens.kt | T11 | ⬜ |
 | feature/presentation/compose/AiCompanionTripScreens.kt | 1,148 | ui/TripScreens.kt | T12 | ⬜ |
@@ -247,3 +247,15 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 - T4：`TravelReviseDataResponse.changedSummary` 由 Gson JsonElement 改為 kotlinx JsonElement（JVM-only 型別 iOS 編不過），mapping 三分支語意經審查確認不變
 - T4：QuizGallery 型別保留（社群牆走假資料仍需要），share-image 鏈路共跳過 4 DTO + 4 domain 型別 + 2 mapping
 - T7：`IsChineseLanguageUseCase` 依 brief 指示改為無參數建構、直接回傳 `true`（不再持有 `CompanionRepository`），取代原本「委派給 `repository.isChineseLanguage()`」的寫法；`CompanionRepository.isChineseLanguage()` 介面方法保留（T5 mock 已回傳 true），但目前無人呼叫，屬預期的孤兒方法
+- T8：`androidx.lifecycle.ViewModel`/`viewModelScope` import 不用改——JetBrains 版 lifecycle-viewmodel 的 Maven 座標雖是 `org.jetbrains.androidx.lifecycle`，但 Kotlin package 仍是 `androidx.lifecycle`（原始碼直接沿用，零改動）
+- T8：`java.util.UUID.randomUUID()` / `System.currentTimeMillis()` 為 JVM-only，commonMain 編不過 iOS：改用 `kotlin.uuid.Uuid.random()`（`newCompletionUuid`）與 `kotlin.time.Clock.System.now().toEpochMilliseconds()`（新增私有頂層 `currentTimeMillis()`），呼叫端邏輯不變，僅 API 替換（屬 (d) 編譯最小修正）
+- T8：`org.koin.android.annotation.KoinViewModel` 移除（annotation import + `@KoinViewModel`）——koin-annotations/koin-android 未接入此專案（DI 改手寫 Koin module，見 T14），annotation 留著會直接編不過
+- T8：`android.content.Context` import 為原始碼未使用的殘留 import，直接刪除，無任何邏輯或呼叫點受影響
+- T8：海報/分享圖鏈路移除清單（全部因「海報全鏈路不做」的 CLAUDE.md 核心約束）——
+  - state：`AiCompanionStates.kt` 的整個 `ShareImageV2State` sealed interface（Idle/Polling/Composing/Ready/SessionExpired/Error）
+  - ViewModel state 欄位：`_shareImageV2State`/`shareImageV2State`、`_posterRevealed`/`posterRevealed`、`shareImageV2Job`、`shareImageV2PollFailureCount`、`activeHistoryCreatedAt`（唯一用途是海報回填 key）
+  - ViewModel method：`startShareImageV2Generation`、`callShareImageV2Once`、`onPosterComposed`、`cancelShareImageV2Polling`、`retryFetchHistoryPoster`、`backfillHistoryPosterLocalPath`、`backfillHistoryAssetPaths`
+  - 建構子參數：`fetchShareImageV2UseCase`（reference 依賴不存在，T7 已跳過）、`shareImageV2AssetResolver`、`posterHistoryStorage`
+  - 呼叫點最小切除：`submitQuiz(selectedTags, shownCities)` 拿掉 `_posterRevealed.value = false` 與 `if (result.canGenerateShareImage) startShareImageV2Generation()`；`startNewQuizRound()` 拿掉 `cancelShareImageV2Polling()`／`_shareImageV2State` 重置／`_posterRevealed` 重置；`deleteQuizHistoryRecord` 拿掉 `posterHistoryStorage.deleteFiles(...)` 整個 if 區塊；`appendQuizHistory` 拿掉 `activeHistoryCreatedAt = record.createdAt`；`override fun onCleared()` 因唯一內容是 `cancelShareImageV2Polling()`，波及後整個 override 一併移除（無其他邏輯）
+  - `AiCompanionStates.kt` 的 `TripProductState.Found.products` 型別由 `com.kkday.library.networking.resource.product.B2CProductCardData` 改為 T5 已定義的中性型別 `com.allenljf.aicompanion.model.TripProductCard`（沿用既有去 B2C 化決策，非本次新引入）
+  - 測驗結果頁需要的人格＋命定城市 state（`AnalysisState.Success(result: QuizCompletionResult)`）完整保留，未受影響
