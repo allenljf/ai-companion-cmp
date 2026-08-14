@@ -155,14 +155,14 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 
 ### T13：Root 導覽 + Phase 1 畫面（最大檔）
 
-**Files:** Create `ui/CompanionScreens.kt`（可拆 2–3 檔：Root 導覽 / Quiz 流程 / 結果頁）；來源 `AiCompanionScreens.kt`（4,663行，4 處 Android 依賴）
+**Files:** Create `ui/CompanionRootScreen.kt`（Root 導覽＋共用 helper）、`ui/QuizScreens.kt`（建立旅伴/主頁/查看社群/測驗流程）、`ui/ResultScreens.kt`（結果頁/歷史回顧）；來源 `AiCompanionScreens.kt`（4,663行，4 處 Android 依賴）
 
-- [ ] Root `when(step)` 導覽照搬；BackHandler 用 CMP 的 `androidx.compose.ui.backhandler.BackHandler` 對接 step 回退
-- [ ] 4 處 Android 依賴（Activity window / Build）：window 效果直接移除、`Build.VERSION` 分支取新行為
-- [ ] 海報產圖/分享畫面區塊整段跳過；測驗結果頁只到人格＋命定城市，加一顆純文字分享鈕（呼叫 T15 的 `shareText`）
-- [ ] 社群牆若畫面需要 → MockData 假資料
-- [ ] `AiCompanionPhase2Previews.kt` 不搬（Android 專屬 tooling）
-- [ ] 編譯驗證 + Commit `feat: Root 導覽與 Phase 1 畫面`
+- [x] Root `when(step)` 導覽照搬；BackHandler 未使用 CMP multiplatform BackHandler（原檔沒有 BackHandler 呼叫，Android 實體返回鍵接線留給 T14）
+- [x] Android 依賴：全部 Activity/window 狀態列效果（10 處，遠多於原估 4 處）直接移除；`Build.VERSION` 分支（2 處，皆綁在海報揭曉狀態）隨海報鏈路移除一併消失
+- [x] 海報產圖/分享畫面區塊整段跳過；測驗結果頁只到人格＋命定城市，加一顆純文字分享鈕（AppButton，onClick no-op 標 TODO: T15）
+- [x] 社群牆（QuizGallery）照搬，資料來自 ViewModel 假資料，CompanionAsyncImage 佔位版下一律顯示 placeholder
+- [x] `AiCompanionPhase2Previews.kt` 不搬（Android 專屬 tooling，本來就不在本次搬移範圍）
+- [x] 編譯驗證（雙 target 皆過）+ Commit `feat: Root 導覽與 Phase 1 畫面`
 
 ### T14：DI + App 進入點
 
@@ -223,7 +223,7 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 | feature/presentation/compose/AiCompanionTripListScreen.kt | 253 | ui/TripListScreen.kt | T10 | ✅ |
 | feature/presentation/compose/AiCompanionPlanScreens.kt | 903 | ui/PlanScreens.kt | T11 | ✅ |
 | feature/presentation/compose/AiCompanionTripScreens.kt | 1,148 | ui/TripScreens.kt | T12 | ✅ |
-| feature/presentation/compose/AiCompanionScreens.kt | 4,663 | ui/CompanionScreens.kt（可拆檔） | T13 | ⬜ |
+| feature/presentation/compose/AiCompanionScreens.kt | 4,663 | ui/CompanionRootScreen.kt(452) + ui/QuizScreens.kt(2,297) + ui/ResultScreens.kt(1,118) | T13 | ✅ |
 | feature/presentation/compose/AiCompanionPhase2Previews.kt | 311 | — | — | ⛔ |
 | feature/presentation/compose/CompanionShareActions.kt | 175 | platform/ShareText.kt（重寫為純文字分享） | T15 | ⬜ |
 | feature/presentation/poster/（7 檔） | ~880 | — 海報全鏈路不做 | — | ⛔ |
@@ -263,3 +263,16 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
   - 呼叫點最小切除：`submitQuiz(selectedTags, shownCities)` 拿掉 `_posterRevealed.value = false` 與 `if (result.canGenerateShareImage) startShareImageV2Generation()`；`startNewQuizRound()` 拿掉 `cancelShareImageV2Polling()`／`_shareImageV2State` 重置／`_posterRevealed` 重置；`deleteQuizHistoryRecord` 拿掉 `posterHistoryStorage.deleteFiles(...)` 整個 if 區塊；`appendQuizHistory` 拿掉 `activeHistoryCreatedAt = record.createdAt`；`override fun onCleared()` 因唯一內容是 `cancelShareImageV2Polling()`，波及後整個 override 一併移除（無其他邏輯）
   - `AiCompanionStates.kt` 的 `TripProductState.Found.products` 型別由 `com.kkday.library.networking.resource.product.B2CProductCardData` 改為 T5 已定義的中性型別 `com.allenljf.aicompanion.model.TripProductCard`（沿用既有去 B2C 化決策，非本次新引入）
   - 測驗結果頁需要的人格＋命定城市 state（`AnalysisState.Success(result: QuizCompletionResult)`）完整保留，未受影響
+- T13：拆檔以原檔章節註解為自然斷面——`ui/CompanionRootScreen.kt`＝`AiCompanionRoot`＋共用 helper（`ScreenScaffold`/`PrimaryButton`/`CompanionAsyncImage`/`ScreenTitleStyle`）；`ui/QuizScreens.kt`＝原檔「各步驟畫面」整段（建立旅伴 3 步驟＋旅伴誕生/主頁＋查看社群＋測驗作答）；`ui/ResultScreens.kt`＝原檔「結果頁（C-1 統一畫面）」整段（結果頁/結果詳情/旅行 DNA 回顧）
+- T13：`CompanionAsyncImage` 佔位版收斂於 `CompanionRootScreen.kt`（保留原簽章 url/contentScale/blurInOnLoad/placeholderAspectRatio/placeholder/loadingContent/errorContent，內部一律顯示 placeholder）；T11/T12 的私有佔位（`PlanAsyncImagePlaceholder`/`TripAsyncImagePlaceholder`）本次未動，留待最終 review 決定是否收斂成單一實作
+- T13：BackHandler——原始碼 `AiCompanionScreens.kt` 全檔沒有任何 `BackHandler` 呼叫（Android 實體返回鍵原本就交給系統預設行為，未特別攔截），故本次不需要引入 CMP 的 multiplatform BackHandler，也沒有自建 expect/actual；Root 的 step 回退邏輯已透過各分支的 `onBack` callback 完整保留
+- T13：Android 依賴實際盤點——`(view.context as Activity).window` 狀態列/edge-to-edge 效果共 10 處（`ScreenScaffold`、`CreateCompanionScreen`、`CompanionBornScreen`、`CompanionHomeScreen`、`QuizGalleryScreen`、`QuizGalleryDetailScreen`、`QuizScreen`、原 `ResultScreen`、原 `CompanionHistoryDetailContent` 各 1 處），全部直接移除（純視覺效果，不影響邏輯）；`Build.VERSION.SDK_INT >= Q` 判斷共 2 處，皆綁在海報揭曉時的狀態列圖示色（`isStatusBarContrastEnforced`），隨海報鏈路整段移除一併消失，未特別处理「取新版行為」
+- T13：`ResultScreen` 重新設計——原始碼以 `ShareImageV2State`（Idle/Polling/Composing/Ready/…）驅動三段式流程（分析中→海報產圖等待動畫`PosterGeneratingContent`→海報 Hero 結果）；T8 已整個移除 `ShareImageV2State`，故本檔只保留原本「無海報」fallback 分支（`travelIdentity`＋`destinationCn/destinationCountry`＋`companionQuote`）作為唯一成功態內容，即「人格＋命定城市」。跳過的 @Composable：`PosterGeneratingContent`、`PosterReadyBanner`、`ReasoningBubble`、`BreathingLoadingText`、`TypewriterText`、`SequentialTypewriterItems`（連同 `TAG_STAGGER_DELAY_MS`/`SEQUENTIAL_ITEM_GAP_MS`/`TYPEWRITER_CHAR_DELAY_MS` 常數）
+- T13：`ResultActionsBottomSheet`/`ActionRow` 保留但瘦身——移除 `isImageReady`/`onShareDna`/`onShareToInstagramStories`/`onDownloadImage`/`showExplore`/`onExploreDestination`（皆依附海報 bitmap 或未搬的 `SearchResultRouter`），保留純導覽列（繼續規劃／看其他人／查看完整結果／回到旅伴／回到列表／刪除紀錄）；`ResultScreen` 底部改成雙按鈕列（`AppButton` 純文字「分享我的旅行 DNA」onClick no-op TODO T15 + 「更多動作」開瘦身後的選單），是本次唯一額外新增的 UI 元素（非原檔葉節點置換），理由：忠實移植「無海報」fallback 分支即已符合「人格＋命定城市」，但原分享動作全部依附海報 bitmap 無法直接搬，改用一顆獨立純文字分享鈕滿足 brief 第 2 點要求，同時保留選單另外三個非海報導覽項目的可達性
+- T13：`ResultDetailScreen`/`CompanionHistoryDetailContent` 同樣移除海報 bitmap 顯示分支，改用原本就存在的「素材缺漏」fallback（命定城市文字佔位 Box）作為唯一內容；`CompanionHistoryDetailContent` 額外移除了 `retryFetchHistoryPoster`（T8 已從 ViewModel 移除）、`PosterHistoryStorage`/`SearchResultRouter` 的 koinInject、`loadResolvedPosterAssets` 擴充函式、`shareableGraphicsLayer`／IG 限動／下載圖片分享動作
+- T13：`copySocialPostToClipboard`（`Context` 擴充函式 + `Toast`）非 KMP commonMain API，改用 `androidx.compose.ui.platform.LocalClipboardManager`（commonMain 既有 API，非新增 expect/actual）在呼叫端組出 `{ clipboardManager.setText(AnnotatedString(text)) }`；複製成功的 Toast 提示先省略，標 TODO
+- T13：`formatHistoryDate`（原用 `java.text.SimpleDateFormat`/`java.util.Locale`/`java.util.Date`，JVM-only 編不過 iOS）比照 T10 `TripListScreen.formatSavedAtDate` 改用純 Kotlin civil-days 曆法換算
+- T13：`fontH6`（`com.kkday.design.font`，DS 標題字級）未移植，用 `Tokens.fontSize4` + `FontWeight(Tokens.fontWeightBold)` + `Tokens.colorTextDarker` 組一個語意相近的 `ScreenTitleStyle`（定義於 `CompanionRootScreen.kt`）
+- T13：`LocalConfiguration.current.screenHeightDp`（`CreateCompanionScreen` 的 loading/empty/error 置中用）比照 T12 `TripScreens.kt` 已用過的模式，改用 `LocalWindowInfo.current.containerSize` + `LocalDensity` 換算
+- T13：`DimensionCard`/`HomeIntentCard`/`ActionRow` 的 `@DrawableRes Int` icon 參數改為 `Painter?`（比照 T9 `AppButton.leadingIcon` 的既有慣例），呼叫端改用 `painterResource(Res.drawable.xxx)`
+- T13：`QuizGalleryItem`（社群牆項目）與其 `shareImageUrl`/`hasPoster` 欄位照搬不動——這是「其他使用者」的假資料展示內容，資料來自 `GetQuizGalleryUseCase` mock，不屬於本次要跳過的「自己的海報生成鏈路」；`CompanionAsyncImage` 佔位版下一律顯示 placeholder，不影響邏輯
