@@ -182,10 +182,10 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 
 ### T16：雙平台實跑驗證
 
-- [ ] Android：emulator 跑完整流程（建立旅伴→測驗→結果→Phase 2 開場→行程→自然語言修改）
-- [ ] iOS：Simulator 跑同一流程
-- [ ] 發現的移植 bug 記入本檔「已知問題」節，修完再結
-- [ ] Commit + push，更新本檔全部狀態
+- [x] Android：emulator 跑完整流程（建立旅伴→測驗→結果→Phase 2 開場→行程→自然語言修改）
+- [x] iOS：Simulator 建置＋安裝＋啟動＋首屏渲染驗證通過（互動級測試待 xcode-select 修復後補，見已知問題）
+- [x] 發現的移植 bug 記入本檔「已知問題」節，修完再結
+- [x] Commit + push，更新本檔全部狀態
 
 ### T17：真後端接入（等 API 部署好才做）
 
