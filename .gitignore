@@ -1,0 +1,12 @@
+# Gradle / KMP
+.gradle/
+build/
+local.properties
+# IDE
+.idea/
+*.iml
+# macOS
+.DS_Store
+# Xcode
+xcuserdata/
+*.xcworkspace/xcuserdata/
