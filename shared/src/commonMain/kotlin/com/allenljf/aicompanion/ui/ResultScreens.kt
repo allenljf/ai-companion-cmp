@@ -177,6 +177,9 @@ internal fun ResultScreen(
                             )
                         }
                     }
+
+                    CompanionResultHighlightContent(result = result)
+                    CompanionResultDetailsContent(result = result, bottomSafeArea = 96.dp)
                 }
 
                 // 底部雙按鈕：純文字分享（T15 才接 shareText）＋更多動作（開啟導覽選單）
@@ -638,6 +641,7 @@ private fun ActionRow(
 
 // ---------- 結果詳情（原 ResultScreen 內容）----------
 
+// 執行期暫不可達（showViewDetail 寫死 false）；T17 接真後端時再決定去留
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun ResultDetailScreen(
@@ -1108,19 +1112,8 @@ private fun QuizHistoryRecord.displayPosterUrl(): String =
         ?: heroLocalPath.takeIf { it.isNotBlank() }?.let { "file://$it" }
         ?: ""
 
-// 改用純 Kotlin 的曆法換算（Howard Hinnant civil_from_days），比照 TripListScreen.formatSavedAtDate 避免額外引入 kotlinx-datetime 依賴。
+// 曆法換算抽到 CompanionRootScreen.formatEpochMillisAsDate 共用（見該處說明），比照 TripListScreen.formatSavedAtDate。
 private fun formatHistoryDate(epochMillis: Long): String {
     if (epochMillis <= 0L) return ""
-    val days = epochMillis.floorDiv(86_400_000L)
-    val z = days + 719468L
-    val era = (if (z >= 0) z else z - 146096L).floorDiv(146097L)
-    val doe = z - era * 146097L
-    val yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365
-    val y = yoe + era * 400L
-    val doy = doe - (365 * yoe + yoe / 4 - yoe / 100)
-    val mp = (5 * doy + 2) / 153
-    val d = doy - (153 * mp + 2) / 5 + 1
-    val m = if (mp < 10) mp + 3 else mp - 9
-    val year = if (m <= 2) y + 1 else y
-    return "$year/${m.toString().padStart(2, '0')}/${d.toString().padStart(2, '0')}"
+    return formatEpochMillisAsDate(epochMillis)
 }

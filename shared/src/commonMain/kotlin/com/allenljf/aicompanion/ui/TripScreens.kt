@@ -98,19 +98,6 @@ import kotlin.math.roundToInt
  * 「請{旅伴}幫我改」開 bottom sheet 對話（travel-revise）：每輪修改成功即 merge 本地生效，可連續修改。
  */
 
-// ---------- 共用 async image 佔位（本檔私有；來源共用 CompanionAsyncImage，比照 PlanScreens 模式先各檔自建） ----------
-
-/** CompanionAsyncImage 佔位：無圖片載入實作，一律顯示呼叫端提供的 placeholder 內容。 */
-@Composable
-private fun TripAsyncImagePlaceholder(
-    modifier: Modifier = Modifier,
-    placeholder: @Composable () -> Unit,
-) {
-    Box(modifier = modifier, contentAlignment = Alignment.Center) {
-        placeholder() // TODO: image loading
-    }
-}
-
 // ---------- ③ 行程成果頁 ----------
 
 /** hero：品牌色深漸層占位＋壓字（日期列＋大標）＋右上關閉鈕（設計稿 TripHero，226dp）。 */
@@ -641,7 +628,8 @@ private fun TripLoadedContent(
     // （不是每天各一顆），可拖曳移動且位置跨天保留；點擊開修改對話 bottom sheet，
     // target_day = 目前所在的 Day 分頁（總覽分頁不顯示——修改 API 要指定天，但拖曳位置仍保留）
     if (currentDay != null) {
-        TripAsyncImagePlaceholder(
+        CompanionAsyncImage(
+            url = avatarUrl,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(end = Tokens.spacing200, bottom = 96.dp)
@@ -883,7 +871,8 @@ private fun TripProductCard(spotName: String, state: TripProductState?) {
             modifier = Modifier.padding(Tokens.spacing100),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TripAsyncImagePlaceholder(
+            CompanionAsyncImage(
+                url = firstProduct.imageUrl,
                 modifier = Modifier
                     .size(56.dp)
                     .clip(RoundedCornerShape(Tokens.radiusSm)),
@@ -1042,7 +1031,8 @@ private fun TripReviseSheet(
                     .padding(bottom = Tokens.spacing100),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                TripAsyncImagePlaceholder(
+                CompanionAsyncImage(
+                    url = avatarUrl,
                     modifier = Modifier
                         .size(26.dp)
                         .clip(CircleShape)

@@ -450,3 +450,23 @@ internal fun CompanionAsyncImage(
         placeholder()
     }
 }
+
+// 原用 java.text.SimpleDateFormat（JVM-only，iOS target 編不過）。
+// 改用純 Kotlin 的曆法換算（Howard Hinnant civil_from_days）避免額外引入 kotlinx-datetime 依賴，
+// TripListScreen.formatSavedAtDate 與 ResultScreens.formatHistoryDate 共用。
+// TODO: timezone —— 用台北時區（UTC+8）近似值換算日界，非精確依裝置時區換算。
+internal fun formatEpochMillisAsDate(epochMillis: Long): String {
+    val localMillis = epochMillis + 8 * 3_600_000L
+    val days = localMillis.floorDiv(86_400_000L)
+    val z = days + 719468L
+    val era = (if (z >= 0) z else z - 146096L).floorDiv(146097L)
+    val doe = z - era * 146097L
+    val yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365
+    val y = yoe + era * 400L
+    val doy = doe - (365 * yoe + yoe / 4 - yoe / 100)
+    val mp = (5 * doy + 2) / 153
+    val d = doy - (153 * mp + 2) / 5 + 1
+    val m = if (mp < 10) mp + 3 else mp - 9
+    val year = if (m <= 2) y + 1 else y
+    return "$year/${m.toString().padStart(2, '0')}/${d.toString().padStart(2, '0')}"
+}

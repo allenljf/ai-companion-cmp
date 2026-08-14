@@ -236,12 +236,14 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 
 （實跑驗證發現的問題記在這裡，修完劃掉）
 
-- [Minor/T10] TripListScreen.formatSavedAtDate 以 UTC 日界切分日期（原版用裝置時區），Taipei 使用者每日 00:00–08:00 存的行程日期會少一天。最終 review 時決定要不要補時區處理或註解
+- ~~[Minor/T10] TripListScreen.formatSavedAtDate 以 UTC 日界切分日期（原版用裝置時區），Taipei 使用者每日 00:00–08:00 存的行程日期會少一天。~~ 已修：final review 時抽成共用 helper `CompanionRootScreen.formatEpochMillisAsDate`，epoch 先加 8 小時（台北時區近似值），標 `// TODO: timezone` 待日後接精確時區換算
+- 全專案無自動化測試，品質依賴手動雙平台實跑（`:androidApp:assembleDebug` + `:shared:compileKotlinIosSimulatorArm64`）
 
 ## 決策補充紀錄
 
 （執行中臨場決定的事記在這裡，例如 ViewModel 海報分支的處理方式、被過濾掉的 icon 清單）
 
+- Final review 修正（結果頁內容、mock 文案、時區 helper、清理）：`ResultScreen` 成功分支補回 `CompanionResultHighlightContent`/`CompanionResultDetailsContent` 呼叫（原本結果頁只有 hero 文字，其餘內容區塊漏接，畫面等於空白）；`MockData.selfIntroduction` 呼叫端改用 tag→中文 label 查表（原本直接把 personality/speechStyle 的 tag id 塞進中文自介句子，混入英文字），ViewModel 不動；`TripListScreen`/`ResultScreens` 重複的曆法換算抽成 `CompanionRootScreen.formatEpochMillisAsDate` 共用；`TripScreens.TripAsyncImagePlaceholder` 收斂成共用 `CompanionAsyncImage`（`PlanScreens.PlanAvatarPlaceholder` 維持不動）；刪殘留的海報鏈路 icon（`compose-multiplatform.xml`/`ic_eye_line.xml`/`ic_map_line.xml`，確認無引用）與 3 份骨架樣板測試檔；`ResultDetailScreen` 補註解說明目前執行期不可達
 - T15：`platform/ShareText.kt` 用 `@Composable expect fun rememberShareText(): (String) -> Unit`（非裸 `expect fun shareText(text: String)`）——兩端都要「目前畫面在哪」才能發分享：Android 用 `LocalContext.current`、iOS 用目前最上層 `rootViewController`，兩者都是 Compose 才知道的資訊，裸 expect fun 得另外用 Koin 塞 context/ViewController 單例反而更繞。Android actual：`Intent.ACTION_SEND` + `Intent.createChooser`，context 非 `Activity` 時補 `FLAG_ACTIVITY_NEW_TASK` 保底。iOS actual：`UIActivityViewController` 從 keyWindow 往下找最上層已 present 的 VC present；popover（iPad）沒設 `sourceView`/`sourceRect` 會直接 crash，接上 `presenter.view`/`presenter.view.bounds` 當 fallback 錨點（demo 目標 iPhone，不精修箭頭位置）。編譯debug 花絮：`UIViewController.popoverPresentationController` 在這個 Kotlin/Native cinterop 版本是**擴充屬性**而非成員屬性，光 import `UIActivityViewController`/`UIViewController` 編不過（`Unresolved reference`），要多 `import platform.UIKit.popoverPresentationController` 才解得到。結果頁分享鈕文案：「我的旅行人格是＜travelIdentity＞，命定城市是＜destinationCn＞！」（`// TODO: i18n`）
 - T14：`AiCompanionViewModel` 建構子 26 參數超過 koin-core-viewmodel `viewModelOf` 的 reified 上限（22），改用具名參數 `viewModel { AiCompanionViewModel(getAiPartnerUseCase = get(), ...) }`，避免同型別（多個 UseCase 共用 `CompanionRepository`）位置性 `get()` 對錯位
 - T14：App 進入點起始頁邏輯——`loadLocalCompanion()` 完成前 `hasLocalCompanion` 為 null，顯示簡易 loading（CircularProgressIndicator），避免尚未判定就先閃一次錯誤起始頁；`AiCompanionRoot.onFinish` 因 demo 只有這一個 feature、沒有外層畫面可退，訂為 no-op（原始碼此處會 finish Activity）

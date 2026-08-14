@@ -381,6 +381,15 @@ object MockData {
     // POST self-introduction
     // ============================================================
 
+    // tag id → 中文 label 查表：personality/speechStyle 從 ViewModel 傳來的是 tag（如 "humorous"），
+    // 直接塞進中文自介句子會混入英文，改用 aiPartner 既有的 label 資料查表還原成中文。
+    private val personalityLabels: Map<String, String> = aiPartner.personality.associate { it.tag to it.label }
+    private val speechStyleLabels: Map<String, String> = aiPartner.speechStyle.associate { it.tag to it.label }
+
+    fun personalityLabel(tag: String): String = personalityLabels[tag] ?: tag
+
+    fun speechStyleLabel(tag: String): String = speechStyleLabels[tag] ?: tag
+
     fun selfIntroduction(companionName: String, speechStyleLabel: String, personalityLabel: String): SelfIntroductionResult {
         val name = companionName.ifBlank { "旅伴" }
         return SelfIntroductionResult(

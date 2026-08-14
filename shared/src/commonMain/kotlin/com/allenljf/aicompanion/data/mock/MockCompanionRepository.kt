@@ -86,8 +86,9 @@ class MockCompanionRepository(private val localStore: LocalCompanionStore) : Com
         } else {
             MockData.selfIntroduction(
                 companionName = companionName,
-                speechStyleLabel = speechStyle.ifBlank { "自在" },
-                personalityLabel = personality.firstOrNull().orEmpty().ifBlank { "隨和" },
+                speechStyleLabel = speechStyle.takeIf { it.isNotBlank() }?.let { MockData.speechStyleLabel(it) } ?: "自在",
+                personalityLabel = personality.firstOrNull()?.takeIf { it.isNotBlank() }
+                    ?.let { MockData.personalityLabel(it) } ?: "隨和",
             )
         }
         return Result.success(result)
