@@ -240,6 +240,8 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 
 （執行中臨場決定的事記在這裡，例如 ViewModel 海報分支的處理方式、被過濾掉的 icon 清單）
 
+- T8：海報鏈路移除清單見 task-T8 報告（8 個 method + ShareImageV2State + 建構子 3 參數 + onCleared 空殼）；java.util.UUID→kotlin.uuid.Uuid、System.currentTimeMillis→kotlin.time.Clock（審查確認語意等價）
+- T9：DS 元件參數改名對照（T10–13 搬畫面時要一起改）：`kkTagColor`→`tagColor`（去 KK 化優先於同簽章）、`KKButton.leadingIcon: @DrawableRes Int`→`Painter?`（呼叫點改 painterResource）、`KKTextField.placeholderTextStringType: StringType`→`placeholder: String`；enum 只保留畫面用到的 variant
 - T5：介面移除 `fetchShareImageV2`（海報鏈路）與 `isMockEnabled`（reference 中無呼叫端）；CompanionApiException 79→19 行（去 B2C envelope 解析）；補中性型別 TripProductCard/TripProductSearchResult；軟失敗開關 = CompanionMockConfig.forceFailReason
 - T6：LocalCompanionStore 用 multiplatform-settings + JSON；壞資料防護 decodeOrNull（壞 JSON → 移除 + 回 null/空）
 - T7：IsChineseLanguageUseCase 寫死 true，`CompanionRepository.isChineseLanguage()` 成孤兒方法（T17 接真後端時再清）
