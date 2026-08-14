@@ -149,9 +149,9 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 
 **Files:** Create `ui/TripScreens.kt`；來源 `AiCompanionTripScreens.kt`（1,148行，3 處 Android 依賴＝Intent deeplink）
 
-- [ ] deeplink 3 處：demo 拿掉，按鈕改 no-op 或隱藏，標 `// TODO: deeplink`
-- [ ] 其餘照搬
-- [ ] 編譯驗證 + Commit `feat: Trip 成果畫面`
+- [x] deeplink 3 處：demo 拿掉，按鈕改 no-op 或隱藏，標 `// TODO: deeplink`
+- [x] 其餘照搬
+- [x] 編譯驗證 + Commit `feat: Trip 成果畫面`
 
 ### T13：Root 導覽 + Phase 1 畫面（最大檔）
 
@@ -222,7 +222,7 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 | feature/viewModel/AiCompanionViewModel.kt | 1,610 | viewmodel/AiCompanionViewModel.kt | T8 | ✅ |
 | feature/presentation/compose/AiCompanionTripListScreen.kt | 253 | ui/TripListScreen.kt | T10 | ✅ |
 | feature/presentation/compose/AiCompanionPlanScreens.kt | 903 | ui/PlanScreens.kt | T11 | ✅ |
-| feature/presentation/compose/AiCompanionTripScreens.kt | 1,148 | ui/TripScreens.kt | T12 | ⬜ |
+| feature/presentation/compose/AiCompanionTripScreens.kt | 1,148 | ui/TripScreens.kt | T12 | ✅ |
 | feature/presentation/compose/AiCompanionScreens.kt | 4,663 | ui/CompanionScreens.kt（可拆檔） | T13 | ⬜ |
 | feature/presentation/compose/AiCompanionPhase2Previews.kt | 311 | — | — | ⛔ |
 | feature/presentation/compose/CompanionShareActions.kt | 175 | platform/ShareText.kt（重寫為純文字分享） | T15 | ⬜ |
