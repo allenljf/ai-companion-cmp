@@ -46,11 +46,11 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 
 **Files:** Modify `gradle/libs.versions.toml`、`shared/build.gradle.kts`
 
-- [ ] 加 kotlinx-serialization plugin（版本跟 kotlin 2.4.10）+ `kotlinx-serialization-json`
-- [ ] 加 `io.insert-koin:koin-core` 與 `koin-compose-viewmodel`（Koin 4.x）、`com.russhwolf:multiplatform-settings`（版本以當下最新 stable 為準，解析失敗就查 Maven Central 換版號）
-- [ ] Ktor **先不加**（後端就緒後的 T17 才加）
-- [ ] 編譯驗證雙 target
-- [ ] Commit `chore: 加入 serialization/koin/settings 依賴`
+- [x] 加 kotlinx-serialization plugin（版本跟 kotlin 2.4.10）+ `kotlinx-serialization-json`
+- [x] 加 `io.insert-koin:koin-core` 與 `koin-compose-viewmodel`（Koin 4.x）、`com.russhwolf:multiplatform-settings`（版本以當下最新 stable 為準，解析失敗就查 Maven Central 換版號）
+- [x] Ktor **先不加**（後端就緒後的 T17 才加）
+- [x] 編譯驗證雙 target
+- [x] Commit `chore: 加入 serialization/koin/settings 依賴`
 
 ### T2：Design token 層
 
@@ -58,18 +58,18 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 
 **Produces:** `object Tokens { val colorXxx: Color; val spacingXxx: Dp; … }`、`AppTheme { content }`（Material3 MaterialTheme 包一層，colorScheme 對到 token）
 
-- [ ] 57 個 token 翻成一個 Kotlin object（顏色 `Color(0xFF…)`、間距 `Dp`、字級 `TextStyle`）
-- [ ] `AppTheme` 掛 Material3，demo 只做 light theme
-- [ ] 編譯驗證 + Commit `feat: design token 層`
+- [x] 57 個 token 翻成一個 Kotlin object（顏色 `Color(0xFF…)`、間距 `Dp`、字級 `TextStyle`）
+- [x] `AppTheme` 掛 Material3，demo 只做 light theme
+- [x] 編譯驗證 + Commit `feat: design token 層`
 
 ### T3：icon 資源
 
 **Files:** Create `shared/src/commonMain/composeResources/drawable/*.xml`；來源 `reference/design-system/USED_DRAWABLES.md`（50 個）
 
-- [ ] 從原專案複製 vector xml；**android 專屬屬性（theme attr 引用等）要改成寫死值**
-- [ ] 海報/分享專用 icon 過濾掉不搬（對照 USED_DRAWABLES 標註的使用處）
-- [ ] 用 `Res.drawable.*` 在一個暫時 preview composable 裡點名驗證可解析，驗證後移除
-- [ ] 編譯驗證 + Commit `feat: icon 資源移植`
+- [x] 從原專案複製 vector xml；**android 專屬屬性（theme attr 引用等）要改成寫死值**（實際檢查後 36 個 icon 皆已是寫死 hex 色碼，無需改寫）
+- [x] 海報/分享專用 icon 過濾掉不搬（對照 USED_DRAWABLES 標註的使用處）：過濾 14 個（6 個 hero + 1 個 stamp + 7 個 tag fallback），皆只被 `poster/PosterFallbackAssets.kt` 引用
+- [x] 用 `Res.drawable.*` 在一個暫時 preview composable 裡點名驗證可解析，驗證後移除
+- [x] 編譯驗證 + Commit `feat: icon 資源移植`
 
 ### T4：model 層
 
@@ -229,8 +229,8 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 | feature/presentation/poster/（7 檔） | ~880 | — 海報全鏈路不做 | — | ⛔ |
 | feature/presentation/AiCompanionActivity.kt | 82 | —（CMP 進入點取代） | T14 | ⛔ |
 | feature/di/AiCompanionAnnotationModule.kt | 76 | di/AppModule.kt（手寫重寫） | T14 | ⬜ |
-| design-system/USED_TOKENS.md（57 token） | — | theme/Tokens.kt | T2 | ⬜ |
-| design-system/USED_DRAWABLES.md（50 icon） | — | composeResources/drawable/ | T3 | ⬜ |
+| design-system/USED_TOKENS.md（57 token） | — | theme/Tokens.kt | T2 | ✅ |
+| design-system/USED_DRAWABLES.md（50 icon） | — | composeResources/drawable/（36 個，過濾 14 個海報專用） | T3 | ✅ |
 
 ## 已知問題
 
