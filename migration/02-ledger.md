@@ -128,8 +128,8 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 
 **Produces:** 與原 KK 元件**同參數簽章**的 5 個 composable（改名 App*），讓畫面層搬過來時只需改 import 與名稱
 
-- [ ] 每個元件用 Material3 對應件包一層 + Tokens 上色
-- [ ] 編譯驗證 + Commit `feat: 輕量 DS 元件`
+- [x] 每個元件用 Material3 對應件包一層 + Tokens 上色
+- [x] 編譯驗證 + Commit `feat: 輕量 DS 元件`
 
 ### T10：TripList 畫面
 
