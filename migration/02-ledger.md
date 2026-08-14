@@ -142,8 +142,8 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 
 **Files:** Create `ui/PlanScreens.kt`；來源 `AiCompanionPlanScreens.kt`（903行，0 Android 依賴）
 
-- [ ] 照搬，換 import；拖曳 threshold、對話接續等行為邏輯**不動**
-- [ ] 編譯驗證 + Commit `feat: Plan 畫面`
+- [x] 照搬，換 import；拖曳 threshold、對話接續等行為邏輯**不動**
+- [x] 編譯驗證 + Commit `feat: Plan 畫面`
 
 ### T12：Trip 成果畫面
 
@@ -221,7 +221,7 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 | feature/viewModel/AiCompanionStates.kt | 299 | viewmodel/AiCompanionStates.kt | T8 | ✅ |
 | feature/viewModel/AiCompanionViewModel.kt | 1,610 | viewmodel/AiCompanionViewModel.kt | T8 | ✅ |
 | feature/presentation/compose/AiCompanionTripListScreen.kt | 253 | ui/TripListScreen.kt | T10 | ✅ |
-| feature/presentation/compose/AiCompanionPlanScreens.kt | 903 | ui/PlanScreens.kt | T11 | ⬜ |
+| feature/presentation/compose/AiCompanionPlanScreens.kt | 903 | ui/PlanScreens.kt | T11 | ✅ |
 | feature/presentation/compose/AiCompanionTripScreens.kt | 1,148 | ui/TripScreens.kt | T12 | ⬜ |
 | feature/presentation/compose/AiCompanionScreens.kt | 4,663 | ui/CompanionScreens.kt（可拆檔） | T13 | ⬜ |
 | feature/presentation/compose/AiCompanionPhase2Previews.kt | 311 | — | — | ⛔ |
@@ -235,6 +235,8 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 ## 已知問題
 
 （實跑驗證發現的問題記在這裡，修完劃掉）
+
+- [Minor/T10] TripListScreen.formatSavedAtDate 以 UTC 日界切分日期（原版用裝置時區），Taipei 使用者每日 00:00–08:00 存的行程日期會少一天。最終 review 時決定要不要補時區處理或註解
 
 ## 決策補充紀錄
 
