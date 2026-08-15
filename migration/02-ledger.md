@@ -183,7 +183,7 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 ### T16：雙平台實跑驗證
 
 - [x] Android：emulator 跑完整流程（建立旅伴→測驗→結果→Phase 2 開場→行程→自然語言修改）
-- [x] iOS：Simulator 建置＋安裝＋啟動＋首屏渲染驗證通過（互動級測試待 xcode-select 修復後補，見已知問題）
+- [x] iOS：Simulator 建置＋安裝＋啟動＋首屏渲染驗證通過；互動級測試已補（2026-08-15）：建立旅伴 → 測驗 → 解析動畫 → 結果頁（修復後內容）→ 系統分享面板 → BottomSheet → Phase 2 開場，本地持久化跨重裝存活
 - [x] 發現的移植 bug 記入本檔「已知問題」節，修完再結
 - [x] Commit + push，更新本檔全部狀態
 
@@ -238,6 +238,7 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 
 - ~~[Minor/T10] TripListScreen.formatSavedAtDate 以 UTC 日界切分日期（原版用裝置時區），Taipei 使用者每日 00:00–08:00 存的行程日期會少一天。~~ 已修：final review 時抽成共用 helper `CompanionRootScreen.formatEpochMillisAsDate`，epoch 先加 8 小時（台北時區近似值），標 `// TODO: timezone` 待日後接精確時區換算
 - 全專案無自動化測試，品質依賴手動雙平台實跑（`:androidApp:assembleDebug` + `:shared:compileKotlinIosSimulatorArm64`）
+- [Minor/iOS] 結果頁頂部標題會被 Dynamic Island 遮住（hero 區 safe area 未處理），Android 不受影響——低優先待修
 
 ## 決策補充紀錄
 
