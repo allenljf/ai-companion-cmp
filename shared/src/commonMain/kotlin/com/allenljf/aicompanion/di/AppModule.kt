@@ -7,6 +7,9 @@ import com.allenljf.aicompanion.data.TripProductSearchRepository
 import com.allenljf.aicompanion.data.mock.MockCompanionOrderRepository
 import com.allenljf.aicompanion.data.mock.MockCompanionRepository
 import com.allenljf.aicompanion.data.mock.MockTripProductSearchRepository
+import com.allenljf.aicompanion.data.remote.CompanionApiClient
+import com.allenljf.aicompanion.data.remote.RemoteCompanionOrderRepository
+import com.allenljf.aicompanion.data.remote.RemoteCompanionRepository
 import com.allenljf.aicompanion.domain.ClearLocalCompanionUseCase
 import com.allenljf.aicompanion.domain.CompleteQuizUseCase
 import com.allenljf.aicompanion.domain.FetchQuizUseCase
@@ -47,10 +50,20 @@ import org.koin.dsl.module
  * 改用具名參數的 lambda 形式，同時避免 26 個 get() 因型別重複（多個 UseCase 共用
  * CompanionRepository）而互相對錯位。
  */
+// T17 真後端接入：單一開關決定 CompanionRepository/CompanionOrderRepository 走真後端還是 mock
+// （改 false 可離線跑 demo，見 migration/API_CONTRACT.md「實際部署差異」一節）。
+// TripProductSearchRepository 永遠綁 mock——後端無對應的商品搜尋端點（見 T17 報告）。
+private const val useRemoteApi = true
+
 val appModule = module {
-    // ---------- data：3 個 mock repository（介面型別綁定）+ 本地儲存 ----------
-    single<CompanionRepository> { MockCompanionRepository(get()) }
-    single<CompanionOrderRepository> { MockCompanionOrderRepository() }
+    // ---------- data：3 個 repository（介面型別綁定，依 useRemoteApi 切換）+ 本地儲存 ----------
+    single { CompanionApiClient() }
+    single<CompanionRepository> {
+        if (useRemoteApi) RemoteCompanionRepository(get(), get()) else MockCompanionRepository(get())
+    }
+    single<CompanionOrderRepository> {
+        if (useRemoteApi) RemoteCompanionOrderRepository(get()) else MockCompanionOrderRepository()
+    }
     single<TripProductSearchRepository> { MockTripProductSearchRepository() }
     single { LocalCompanionStore(Settings()) }
 

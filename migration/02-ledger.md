@@ -189,11 +189,11 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 
 ### T17：真後端接入（等 API 部署好才做）
 
-**Files:** Create `data/remote/CompanionApiClient.kt`（Ktor）、`data/remote/RemoteCompanionRepository.kt`；Modify `libs.versions.toml`（ktor-client-core/content-negotiation/serialization + okhttp/darwin engine）、`di/AppModule.kt`
+**Files:** Create `data/remote/CompanionApiClient.kt`（Ktor）、`data/remote/RemoteCompanionRepository.kt`、`data/remote/RemoteCompanionOrderRepository.kt`；Modify `libs.versions.toml`（ktor 3.5.2：client-core/content-negotiation/serialization + okhttp/darwin engine）、`shared/build.gradle.kts`、`di/AppModule.kt`、`model/ApiModels.kt`（ai-partner 信封巢狀化、新增 orders DTO）、`model/ModelMappings.kt`
 
-- [ ] Ktor client 依 `API_CONTRACT.md` 16→實作範圍內的路徑實作
-- [ ] DI 綁定 mock→remote 用一個 flag 切換（保留 mock 供離線 demo）
-- [ ] 雙平台實跑 + Commit
+- [x] Ktor client 依實際部署的 15 支端點實作（`share-image-v2` 不接、商品搜尋無端點續用 mock）
+- [x] DI 綁定 mock→remote 用一個 flag 切換（`useRemoteApi`，保留 mock 供離線 demo）
+- [ ] 雙平台實跑 + Commit（留給 controller；本 task 已完成 JVM 端 15 支端點真連線 decode 驗證，見 task-T17-report.md）
 
 ---
 
@@ -207,7 +207,7 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 | model/DomainModels.kt | 465 | model/DomainModels.kt | T4 | ✅ |
 | model/ModelMappings.kt | 255 | model/ModelMappings.kt | T4 | ✅ |
 | model/TripProductSearchModels.kt | 21 | model/TripProductSearchModels.kt | T4 | ✅ |
-| api-service/ICompanionApiService.kt | 93 | —（mock 直接實作 repository；T17 才有 Ktor client） | T5/T17 | ⛔ |
+| api-service/ICompanionApiService.kt | 93 | data/remote/CompanionApiClient.kt（Ktor，去 Retrofit/B2C 化） | T17 | ✅ |
 | api-service/ITripProductSearchApiService.kt | 19 | — 同上 | T5/T17 | ⛔ |
 | domain-contract/CompanionRepository.kt | 167 | data/CompanionRepository.kt | T5 | ✅ |
 | domain-contract/CompanionOrderRepository.kt | 18 | data/CompanionOrderRepository.kt | T5 | ✅ |
@@ -215,6 +215,7 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 | data-repository/CompanionRepositoryImpl.kt | 555 | data/mock/MockCompanionRepository.kt + data/mock/MockData.kt（重寫為 mock） | T5 | ✅ |
 | data-repository/CompanionOrderRepositoryImpl.kt | 83 | data/mock/MockCompanionOrderRepository.kt | T5 | ✅ |
 | data-repository/TripProductSearchRepositoryImpl.kt | 28 | data/mock/MockTripProductSearchRepository.kt | T5 | ✅ |
+| （新增，無對應原始檔） | — | data/remote/RemoteCompanionRepository.kt + data/remote/RemoteCompanionOrderRepository.kt | T17 | ✅ |
 | data-repository/CompanionApiException.kt | 79 | data/CompanionApiException.kt（瘦身，拿掉 B2C envelope 解析） | T5 | ✅ |
 | domain-usecase/（26 檔，扣 ShareImageV2） | ~600 | domain/*.kt | T7 | ✅ |
 | domain-usecase/FetchShareImageV2UseCase.kt | 21 | — | — | ⛔ |
@@ -250,6 +251,7 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 - T14：App 進入點起始頁邏輯——`loadLocalCompanion()` 完成前 `hasLocalCompanion` 為 null，顯示簡易 loading（CircularProgressIndicator），避免尚未判定就先閃一次錯誤起始頁；`AiCompanionRoot.onFinish` 因 demo 只有這一個 feature、沒有外層畫面可退，訂為 no-op（原始碼此處會 finish Activity）
 - T14：原始碼 `AiCompanionScreens.kt` 全檔無 `BackHandler`，Android 實體返回鍵沿用系統預設行為，本任務未額外接線（T13 已確認過此點，見上）
 - T10：SimpleDateFormat→手寫曆法換算（Hinnant civil_from_days，reviewer 交叉驗算通過）；UTC 日界差異記入已知問題
+- T17：真後端接入，15 支端點逐支真連線驗證（詳見 task-T17-report.md）。DTO 修正 2 處：(1) `AiPartnerDataResponse` 實際回應把 personality/speech_style/gender/outfit/hair_style/hair_color/avatars 包在 `data.variant` 底下（原 DTO 是攤平），新增 `AiPartnerVariantResponse` 巢狀層，domain model/ViewModel 不動；(2) `GET orders` 原本沒有對應 DTO（mock 版材料層直接回固定清單），新增 `OrdersDataResponse`/`OrderResponse`/`OrderDestinationResponse`，`destinationName` 取 `destinations.firstOrNull()`（比照 reference `CompanionOrderRepositoryImpl` 邏輯，`go_dt` 後端已格式化成 yyyy-MM-dd 不必再轉 epoch）。Ktor Json 設定 2 個關鍵 flag：`encodeDefaults = true`（後端把 `shown_question_counts`/`shown_cities` 等欄位標必填，即使空 map/list 也要序列化，否則 kotlinx.serialization 預設省略等於預設值的欄位會被 400 擋掉）、`coerceInputValues = true`（travel-guide 軟失敗時 `days: Int` 欄位會回 `null` 而非省略，非 nullable 欄位遇 null 要退回預設值而非直接炸 decode）；另外 `quiz-gallery` 曾在錯誤情況下遇過 `text/plain` content-type 但 body 仍是 JSON，ContentNegotiation 註冊 `contentType = ContentType.Any` 放寬比對。信封拆殼：`ApiEnvelope<T>{metadata,data}` + `unwrap()`，`metadata.status != "0000"` 丟 `CompanionApiException`。無商品搜尋端點，`TripProductSearchRepository` 續綁 mock。
 - T11/T12/T13：CompanionAsyncImage（Coil）以佔位版實作——T13 定義原名共用版，T11/T12 各有私有佔位，最終 review 收斂；`// TODO: image loading`
 - T12：deeplink 3 處 onClick 改 no-op 保留外觀；LocalConfiguration.screenHeightDp→LocalWindowInfo.containerSize 換算（審查確認語意等價）
 - T13：拆 3 檔（CompanionRootScreen/QuizScreens/ResultScreens，沿原檔章節斷面）；跳過 6 個海報鏈路 @Composable；結果頁底部欄取原檔 no-poster fallback 分支，BottomSheet 剪 4 個海報項留 6 個 nav 項；分享鈕 no-op 待 T15；原檔無 BackHandler，返回鍵接線歸 T14

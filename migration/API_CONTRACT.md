@@ -316,3 +316,14 @@ Base path 建議：`/api/companion/`（原本是 `/api/v3/companion/`）
 6. 開場層 10~12
 7. Phase 1（視 demo 範圍）
 ```
+
+---
+
+## 實際部署差異（2026-08-15，T17）
+
+- **回應信封**：所有端點實際都包 `{metadata:{status,desc}, data:{...}}`（`status=="0000"` 成功，失敗 `desc` 常是字串陣列）；`GET orders` 另帶 `pagination`/`dynamic`/`queue_it` 等雜訊欄位，一律只取 `data`。
+- **`entry_type` 不是 `source`**：travel-summary 的欄位名稱以本文件的 request 定義為準，實測與文件一致。
+- **`GET ai-partner`** 的選項欄位包在 `data.variant` 底下（非本文件早前草稿的攤平形狀），另外多了 `case_oid`/`version`/`expire_date`/`properties`/`partner_intro_prompt`（版控與內部 prompt 樣板，前端不需要）。
+- **無獨立商品搜尋端點**：行程頁「用景點名稱找可訂商品」在後端未部署，`TripProductSearchRepository` 續用 mock。
+- **`share-image-v2`**：端點存在但本專案不接（海報全鏈路不做，見 CLAUDE.md）。
+- **Ktor 序列化眉角**：後端把部分「有預設值」的欄位當必填（例如 `shown_question_counts`/`shown_cities` 即使空也要出現在 body），呼叫端需 `encodeDefaults = true`；LLM 軟失敗時部分非 nullable 欄位（如 travel-guide 的 `days`）會回 `null` 而非省略，需 `coerceInputValues = true` 才不會直接 decode 炸掉。

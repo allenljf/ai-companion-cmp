@@ -37,9 +37,16 @@ data class SelfIntroductionRequest(
 )
 
 // ---------- GET /companion/ai-partner ----------
+// 實際部署（2026-08）：選項欄位包在 data.variant 底下，data 另有 case_oid/version/expire_date/
+// properties（都是版控/快取用途，這裡不需要）；partner_intro_prompt 是後端內部 LLM prompt 樣板，忽略即可
 
 @Serializable
 data class AiPartnerDataResponse(
+    @SerialName("variant") val variant: AiPartnerVariantResponse = AiPartnerVariantResponse()
+)
+
+@Serializable
+data class AiPartnerVariantResponse(
     @SerialName("personality") val personality: List<PersonalityOptionResponse> = emptyList(),
     @SerialName("speech_style") val speechStyle: List<SpeechStyleOptionResponse> = emptyList(),
     @SerialName("gender") val gender: List<AppearanceOptionResponse> = emptyList(),
@@ -217,6 +224,34 @@ data class TravelSummaryFromOrdersDataResponse(
     @SerialName("options") val options: List<TravelDestinationOptionResponse> = emptyList(),
     @SerialName("ai_model") val aiModel: String? = null,
     @SerialName("fail_reason") val failReason: String? = null,
+)
+
+// ---------- GET /companion/orders ----------
+// 真實訂單形狀欄位極多（KKday 訂單系統原樣回傳）；這裡只取材料層用得到的 4 個欄位，其餘忽略
+
+@Serializable
+data class OrdersDataResponse(
+    @SerialName("orders") val orders: List<OrderResponse> = emptyList()
+)
+
+@Serializable
+data class OrderResponse(
+    @SerialName("id") val id: String = "",
+    @SerialName("prod_name") val prodName: String = "",
+    @SerialName("package_name") val packageName: String = "",
+    // yyyy-MM-dd，後端已格式化好，不需再自己轉換 epoch
+    @SerialName("go_dt") val goDt: String? = null,
+    @SerialName("destination") val destination: OrderDestinationResponse? = null
+)
+
+@Serializable
+data class OrderDestinationResponse(
+    @SerialName("destinations") val destinations: List<OrderDestinationItemResponse> = emptyList()
+)
+
+@Serializable
+data class OrderDestinationItemResponse(
+    @SerialName("name") val name: String = ""
 )
 
 // ---------- GET wish_list / GET history + POST travel-summary-from-wish / -from-history ----------

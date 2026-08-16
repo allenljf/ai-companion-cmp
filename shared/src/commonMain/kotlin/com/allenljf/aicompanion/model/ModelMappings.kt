@@ -5,15 +5,17 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 
-fun AiPartnerDataResponse.toDomain() = AiPartnerResult(
-    personality = personality.map { CompanionTraitOption(it.tag, it.label, it.description.orEmpty()) },
-    speechStyle = speechStyle.map { CompanionTraitOption(it.tag, it.label, it.description.orEmpty()) },
-    gender = gender.map { CompanionAppearanceOption(it.tag, it.label) },
-    outfit = outfit.map { CompanionAppearanceOption(it.tag, it.label) },
-    hairStyle = hairStyle.map { CompanionAppearanceOption(it.tag, it.label) },
-    hairColor = hairColor.map { CompanionAppearanceOption(it.tag, it.label) },
-    avatars = avatars
-)
+fun AiPartnerDataResponse.toDomain() = variant.let {
+    AiPartnerResult(
+        personality = it.personality.map { opt -> CompanionTraitOption(opt.tag, opt.label, opt.description.orEmpty()) },
+        speechStyle = it.speechStyle.map { opt -> CompanionTraitOption(opt.tag, opt.label, opt.description.orEmpty()) },
+        gender = it.gender.map { opt -> CompanionAppearanceOption(opt.tag, opt.label) },
+        outfit = it.outfit.map { opt -> CompanionAppearanceOption(opt.tag, opt.label) },
+        hairStyle = it.hairStyle.map { opt -> CompanionAppearanceOption(opt.tag, opt.label) },
+        hairColor = it.hairColor.map { opt -> CompanionAppearanceOption(opt.tag, opt.label) },
+        avatars = it.avatars
+    )
+}
 
 fun QuizDataResponse.toDomain() = QuizResult(
     count = count,
@@ -76,6 +78,15 @@ fun TravelSummaryFromOrdersDataResponse.toDomain() = TravelSummaryFromOrdersResu
     greeting = greeting,
     options = options.map { TravelDestinationOption(orderIndex = it.orderIndex, city = it.city) },
     failReason = failReason,
+)
+
+// GET orders 的訂單 → 開場材料（比照 reference CompanionOrderRepositoryImpl：destinations 取第一筆當代表城市）
+fun OrderResponse.toMaterial() = TripOrderMaterial(
+    prodName = prodName,
+    packageName = packageName,
+    destinationName = destination?.destinations?.firstOrNull()?.name.orEmpty(),
+    oid = id,
+    goDt = goDt.orEmpty(),
 )
 
 fun TripOrderMaterial.toRequestModel() = TripOrderMaterialRequest(
