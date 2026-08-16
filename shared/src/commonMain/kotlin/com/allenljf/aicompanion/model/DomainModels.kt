@@ -102,6 +102,18 @@ data class QuizCompletionResult(
     }
 }
 
+/**
+ * share-image-v2 的顯示結果：後端同步回合成好的 hero PNG URL，不需要 reference 版的
+ * status enum/輪詢/content/decorations（見 ApiModels.kt 註解，T19 只補顯示需要的最小集合）。
+ */
+data class ShareImageV2Result(
+    val heroUrl: String? = null,
+    val failReason: String? = null
+) {
+    // 軟失敗以 fail_reason 判斷；本專案不接輪詢，heroUrl 缺漏也視為失敗
+    val isReady: Boolean get() = failReason.isNullOrEmpty() && !heroUrl.isNullOrBlank()
+}
+
 data class QuizGalleryResult(
     val count: Int = 0,
     val items: List<QuizGalleryItem> = emptyList()
@@ -151,6 +163,8 @@ data class QuizHistoryRecord(
     val companionSnapshot: CompanionSnapshot = CompanionSnapshot(),
     // 保留產圖當時的 completion_uuid：本機素材缺漏時可用同一組 uuid 補打 share-image-v2 拿圖
     val completionUuid: String = "",
+    // T19：後端產好的 hero 圖遠端 URL，share-image-v2 成功後回填，回顧列表/詳情頁可直接顯示不必重打（35 秒）
+    val heroImageUrl: String = "",
     val createdAt: Long = 0L
 )
 

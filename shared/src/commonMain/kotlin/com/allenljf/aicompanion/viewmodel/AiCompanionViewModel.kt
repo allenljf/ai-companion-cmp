@@ -5,6 +5,7 @@ import com.allenljf.aicompanion.domain.CompleteQuizUseCase
 import com.allenljf.aicompanion.domain.FetchQuizUseCase
 import com.allenljf.aicompanion.domain.FetchRecommendCityUseCase
 import com.allenljf.aicompanion.domain.FetchSelfIntroductionUseCase
+import com.allenljf.aicompanion.domain.FetchShareImageV2UseCase
 import com.allenljf.aicompanion.domain.FetchTravelGuideUseCase
 import com.allenljf.aicompanion.domain.FetchTravelReviseUseCase
 import com.allenljf.aicompanion.domain.FetchTravelSummaryFromHistoryUseCase
@@ -66,14 +67,16 @@ private fun currentTimeMillis(): Long = Clock.System.now().toEpochMilliseconds()
  * - completion_uuid 生命週期：每次真正送出 quiz-completions（submitQuiz）都會重新生成一組，
  *   同一輪內 share-image-v2 沿用同一組 uuid
  * - quiz-completions 軟失敗判定（fail_reason）
- * - share-image-v2 為按需觸發（後端不會背景預產圖）：拿到 pending 後主動打第一次觸發產圖，
- *   等 30s 後開始輪詢、之後每 10s、總逾時 120s（見 docs/ai-companion-app-integration.md 第 6 節）
+ * - share-image-v2（T19，簡化版，不接輪詢）：實測後端同步回 hero 圖，不是 pending 起輪詢那套；
+ *   但很慢（首次約 80 秒），分析成功當下就在背景另開一個 coroutine 觸發，不擋結果頁文字內容顯示，
+ *   圖 ready 後才補上（見 fetchShareImageV2InBackground）
  */
 class AiCompanionViewModel(
     private val getAiPartnerUseCase: GetAiPartnerUseCase,
     private val fetchQuizUseCase: FetchQuizUseCase,
     private val completeQuizUseCase: CompleteQuizUseCase,
     private val fetchSelfIntroductionUseCase: FetchSelfIntroductionUseCase,
+    private val fetchShareImageV2UseCase: FetchShareImageV2UseCase,
     private val getQuizGalleryUseCase: GetQuizGalleryUseCase,
     private val saveLocalCompanionUseCase: SaveLocalCompanionUseCase,
     private val getLocalCompanionUseCase: GetLocalCompanionUseCase,
@@ -113,6 +116,9 @@ class AiCompanionViewModel(
 
     private val _analysisState = MutableStateFlow<AnalysisState>(AnalysisState.Idle)
     val analysisState: StateFlow<AnalysisState> = _analysisState.asStateFlow()
+
+    private val _shareImageV2State = MutableStateFlow<ShareImageV2State>(ShareImageV2State.Idle)
+    val shareImageV2State: StateFlow<ShareImageV2State> = _shareImageV2State.asStateFlow()
 
     private val _introductionState = MutableStateFlow<IntroductionState>(IntroductionState.Idle)
     val introductionState: StateFlow<IntroductionState> = _introductionState.asStateFlow()
@@ -403,11 +409,12 @@ class AiCompanionViewModel(
         }
     }
 
-    /** 提交答案取得文字分析；成功且 pending 即依文件規範主動觸發 share-image 產圖。 */
+    /** 提交答案取得文字分析；成功即在背景觸發 share-image-v2 產圖（見 fetchShareImageV2InBackground）。 */
     fun submitQuiz(selectedTags: List<String>, shownCities: List<String> = emptyList()) {
         // 每次真正送出 quiz-completions 都要用新的一組 uuid，不能沿用上一輪（否則 share-image
         // 可能命中上一輪已產好的圖，秒回同一張海報）；uuid 生命週期從這裡開始，share-image 沿用同一組直到本輪結束
         completionUuid = newCompletionUuid()
+        _shareImageV2State.value = ShareImageV2State.Idle // 新一輪重置，避免殘留上一輪的海報狀態
         viewModelScope.launch {
             _analysisState.value = AnalysisState.Analyzing
             completeQuizWithSoftFailRetry(selectedTags, shownCities).fold(
@@ -415,6 +422,7 @@ class AiCompanionViewModel(
                     if (result.isAnalysisSuccess) {
                         _analysisState.value = AnalysisState.Success(result)
                         appendQuizHistory(result)
+                        fetchShareImageV2InBackground(completionUuid)
                     } else {
                         // fail_reason 仍有值（重試後依然軟失敗）→ 才真的顯示失敗，提供手動重試
                         _analysisState.value = AnalysisState.SoftFailed
@@ -423,6 +431,39 @@ class AiCompanionViewModel(
                 onFailure = { _analysisState.value = AnalysisState.Error }
             )
         }
+    }
+
+    /**
+     * share-image-v2 實測很慢（首次約 80 秒、同 uuid 重打約 35 秒，後端未快取），不能放在
+     * submitQuiz 的主流程裡等——另開一個 coroutine，讓結果頁文字內容先顯示，圖 ready 後才補上。
+     * 失敗（含 fail_reason 軟失敗）只影響這個狀態本身，不影響其餘已顯示的分析結果（軟失敗契約）。
+     */
+    private fun fetchShareImageV2InBackground(uuid: String) {
+        viewModelScope.launch {
+            _shareImageV2State.value = ShareImageV2State.Loading
+            fetchShareImageV2UseCase(completionUuid = uuid).fold(
+                onSuccess = { result ->
+                    if (result.isReady) {
+                        val heroUrl = result.heroUrl.orEmpty()
+                        _shareImageV2State.value = ShareImageV2State.Ready(heroUrl)
+                        backfillQuizHistoryHeroUrl(uuid, heroUrl)
+                    } else {
+                        _shareImageV2State.value = ShareImageV2State.Failed
+                    }
+                },
+                onFailure = { _shareImageV2State.value = ShareImageV2State.Failed }
+            )
+        }
+    }
+
+    /** 產圖成功後回填對應那筆歷史紀錄的 heroImageUrl，回顧列表/詳情頁才不用重打一次 35 秒的 API。 */
+    private suspend fun backfillQuizHistoryHeroUrl(uuid: String, heroUrl: String) {
+        val records = getQuizHistoryUseCase().getOrNull().orEmpty()
+        val updated = records.map { record ->
+            if (record.completionUuid == uuid) record.copy(heroImageUrl = heroUrl) else record
+        }
+        saveQuizHistoryUseCase(updated)
+        _quizHistory.value = updated
     }
 
     /**
@@ -513,6 +554,7 @@ class AiCompanionViewModel(
         completionUuid = newCompletionUuid()
         _quizAnswers.value = emptyMap()
         _analysisState.value = AnalysisState.Idle
+        _shareImageV2State.value = ShareImageV2State.Idle
     }
 
     // ---------- Phase 2：行程規劃（travel-summary / travel-guide，皆無狀態 API） ----------

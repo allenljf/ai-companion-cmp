@@ -63,6 +63,11 @@ fun QuizCompletionDataResponse.toDomain() = QuizCompletionResult(
     failReason = failReason
 )
 
+fun ShareImageV2DataResponse.toDomain() = ShareImageV2Result(
+    heroUrl = heroUrl,
+    failReason = failReason
+)
+
 fun SelfIntroductionDataResponse.toDomain() = SelfIntroductionResult(
     introduction = introduction,
     failReason = failReason

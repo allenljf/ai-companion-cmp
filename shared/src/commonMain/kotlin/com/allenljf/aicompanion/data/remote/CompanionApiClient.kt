@@ -13,6 +13,8 @@ import com.allenljf.aicompanion.model.RecommendCityDataResponse
 import com.allenljf.aicompanion.model.RecommendCityRequest
 import com.allenljf.aicompanion.model.SelfIntroductionDataResponse
 import com.allenljf.aicompanion.model.SelfIntroductionRequest
+import com.allenljf.aicompanion.model.ShareImageV2DataResponse
+import com.allenljf.aicompanion.model.ShareImageV2Request
 import com.allenljf.aicompanion.model.TravelGuideDataResponse
 import com.allenljf.aicompanion.model.TravelGuideRequest
 import com.allenljf.aicompanion.model.TravelReviseDataResponse
@@ -27,6 +29,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.timeout
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -98,6 +101,20 @@ class CompanionApiClient(
         httpClient.post("$baseUrl/v1/companion/quiz-completions") {
             contentType(ContentType.Application.Json)
             setBody(body)
+        }.body()
+
+    // 實測很慢（首次約 80 秒、同 uuid 重打約 35 秒，後端未快取），沿用全域 60 秒逾時會提早炸掉，
+    // 只放寬這支到 [SHARE_IMAGE_TIMEOUT_MILLIS]（其餘端點不受影響）
+    suspend fun fetchShareImageV2(body: ShareImageV2Request): ApiEnvelope<ShareImageV2DataResponse> =
+        httpClient.post("$baseUrl/v1/companion/share-image-v2") {
+            contentType(ContentType.Application.Json)
+            setBody(body)
+            // socketTimeoutMillis 也要一併放寬——回應是產完圖才一次回傳，80 秒間沒有任何 socket
+            // 資料往來，只放寬 requestTimeoutMillis 的話會先被預設 60 秒的 socket 逾時打斷
+            timeout {
+                requestTimeoutMillis = SHARE_IMAGE_TIMEOUT_MILLIS
+                socketTimeoutMillis = SHARE_IMAGE_TIMEOUT_MILLIS
+            }
         }.body()
 
     suspend fun getQuizGallery(): ApiEnvelope<QuizGalleryDataResponse> =
@@ -174,6 +191,9 @@ class CompanionApiClient(
 }
 
 private const val REQUEST_TIMEOUT_MILLIS = 60_000L
+
+// share-image-v2 首次約 80 秒；120 秒留緩衝，避免卡在剛好超過的邊界情況
+private const val SHARE_IMAGE_TIMEOUT_MILLIS = 120_000L
 
 private fun createHttpClient(): HttpClient = HttpClient {
     install(ContentNegotiation) {

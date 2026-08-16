@@ -15,6 +15,7 @@ import com.allenljf.aicompanion.domain.CompleteQuizUseCase
 import com.allenljf.aicompanion.domain.FetchQuizUseCase
 import com.allenljf.aicompanion.domain.FetchRecommendCityUseCase
 import com.allenljf.aicompanion.domain.FetchSelfIntroductionUseCase
+import com.allenljf.aicompanion.domain.FetchShareImageV2UseCase
 import com.allenljf.aicompanion.domain.FetchTravelGuideUseCase
 import com.allenljf.aicompanion.domain.FetchTravelReviseUseCase
 import com.allenljf.aicompanion.domain.FetchTravelSummaryFromHistoryUseCase
@@ -73,6 +74,7 @@ val appModule = module {
     factoryOf(::FetchQuizUseCase)
     factoryOf(::FetchRecommendCityUseCase)
     factoryOf(::FetchSelfIntroductionUseCase)
+    factoryOf(::FetchShareImageV2UseCase)
     factoryOf(::FetchTravelGuideUseCase)
     factoryOf(::FetchTravelReviseUseCase)
     factoryOf(::FetchTravelSummaryFromHistoryUseCase)
@@ -102,6 +104,7 @@ val appModule = module {
             fetchQuizUseCase = get(),
             completeQuizUseCase = get(),
             fetchSelfIntroductionUseCase = get(),
+            fetchShareImageV2UseCase = get(),
             getQuizGalleryUseCase = get(),
             saveLocalCompanionUseCase = get(),
             getLocalCompanionUseCase = get(),

@@ -17,6 +17,8 @@ import com.allenljf.aicompanion.model.RecommendCityResult
 import com.allenljf.aicompanion.model.SavedTripRecord
 import com.allenljf.aicompanion.model.SelfIntroductionRequest
 import com.allenljf.aicompanion.model.SelfIntroductionResult
+import com.allenljf.aicompanion.model.ShareImageV2Request
+import com.allenljf.aicompanion.model.ShareImageV2Result
 import com.allenljf.aicompanion.model.TravelGuideDay
 import com.allenljf.aicompanion.model.TravelGuideRequest
 import com.allenljf.aicompanion.model.TravelGuideResult
@@ -85,6 +87,15 @@ class RemoteCompanionRepository(
                 companionName = companionName,
                 partnerAvatarUrl = partnerAvatarUrl
             )
+        ).unwrap().toDomain()
+    }
+
+    override suspend fun fetchShareImageV2(
+        completionUuid: String,
+        partnerImageUrl: String?
+    ): Result<ShareImageV2Result> = runCatching {
+        client.fetchShareImageV2(
+            ShareImageV2Request(completionUuid = completionUuid, partnerImageUrl = partnerImageUrl)
         ).unwrap().toDomain()
     }
 

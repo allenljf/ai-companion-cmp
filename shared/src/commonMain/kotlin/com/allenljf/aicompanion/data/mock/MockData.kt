@@ -51,6 +51,11 @@ object MockData {
         delay(Random.nextLong(300, 801))
     }
 
+    // share-image-v2 固定假圖：真後端這支很慢（35~80 秒），mock 不需要重現那個延遲量級，
+    // 用一張真實可載入的圖示意 hero 效果即可（見實測回應 scratchpad/sdd/share-image-v2-response.json）
+    const val SHARE_IMAGE_HERO_URL: String =
+        "https://storage.googleapis.com/ai-companion-assets-allenljf/share-v2/f930e62d0f460bdf3a550f319bca9dcd-hero.png"
+
     // ============================================================
     // GET ai-partner
     // ============================================================

@@ -12,6 +12,7 @@ import com.allenljf.aicompanion.model.QuizResult
 import com.allenljf.aicompanion.model.RecommendCityResult
 import com.allenljf.aicompanion.model.SavedTripRecord
 import com.allenljf.aicompanion.model.SelfIntroductionResult
+import com.allenljf.aicompanion.model.ShareImageV2Result
 import com.allenljf.aicompanion.model.TravelGuideDay
 import com.allenljf.aicompanion.model.TravelGuideDayItem
 import com.allenljf.aicompanion.model.TravelGuideResult
@@ -67,6 +68,18 @@ class MockCompanionRepository(private val localStore: LocalCompanionStore) : Com
             MockData.quizCompletion(selectedTags)
         }
         return Result.success(result)
+    }
+
+    // 固定假 hero URL + 略長 delay（示意真後端的慢），demo 不需要每次都不一樣
+    override suspend fun fetchShareImageV2(
+        completionUuid: String,
+        partnerImageUrl: String?
+    ): Result<ShareImageV2Result> {
+        MockData.networkDelay()
+        if (CompanionMockConfig.forceFailReason) {
+            return Result.success(ShareImageV2Result(failReason = "llm_error"))
+        }
+        return Result.success(ShareImageV2Result(heroUrl = MockData.SHARE_IMAGE_HERO_URL))
     }
 
     override suspend fun getQuizGallery(): Result<QuizGalleryResult> {

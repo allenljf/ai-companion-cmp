@@ -10,6 +10,7 @@ import com.allenljf.aicompanion.model.CityChatMessage
 import com.allenljf.aicompanion.model.RecommendCityResult
 import com.allenljf.aicompanion.model.SavedTripRecord
 import com.allenljf.aicompanion.model.SelfIntroductionResult
+import com.allenljf.aicompanion.model.ShareImageV2Result
 import com.allenljf.aicompanion.model.TravelGuideDay
 import com.allenljf.aicompanion.model.TravelGuideResult
 import com.allenljf.aicompanion.model.TravelReviseResult
@@ -24,7 +25,7 @@ import com.allenljf.aicompanion.model.TripProductMaterial
  * 方便對照 reference/android-src 移植 UseCase/ViewModel 時不用改呼叫端。
  *
  * 去 B2C 化調整（見 migration/API_CONTRACT.md）：
- * - `fetchShareImageV2` 已移除——海報產圖全鏈路不做（demo 範圍排除，見 CLAUDE.md 核心約束）
+ * - `fetchShareImageV2`（T19 接回）：只回傳顯示 hero 圖需要的最小欄位，不做 Bitmap 合成/輪詢
  * - `isMockEnabled` 已移除——原本是 KKday `CompanionMockSwitch`（Retrofit interceptor 開發用切換）的
  *   網路層概念，本專案資料來源本身就是 mock，且原專案中無 UseCase/ViewModel 實際呼叫它
  */
@@ -48,6 +49,10 @@ interface CompanionRepository {
         companionName: String?,
         partnerAvatarUrl: String?
     ): Result<QuizCompletionResult>
+
+    // 海報 hero 圖（T19）：completionUuid 對齊 quiz-completions 用的同一組；partnerImageUrl 選填，
+    // demo 一律傳 null。實測很慢（首次約 80 秒、同 uuid 重打約 35 秒），呼叫端不可在主流程同步等待
+    suspend fun fetchShareImageV2(completionUuid: String, partnerImageUrl: String? = null): Result<ShareImageV2Result>
 
     // 其他人做過的測驗結果清單（無資料庫，純讀 Redis LIST，最新 100 筆、1 天 TTL）
     suspend fun getQuizGallery(): Result<QuizGalleryResult>

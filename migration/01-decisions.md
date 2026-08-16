@@ -59,6 +59,9 @@
 
 ### 6. 海報不做、保留純文字分享
 
+> **2026-08-16 變更**：後端完成 `share-image-v2` 產圖後，已接回「顯示後端產好的海報圖」（見 02-ledger.md T19）。
+> 仍然不做的部分不變：app 端 Bitmap 合成、本機存檔、輪詢、分享圖片檔（分享維持純文字）。
+
 - 測驗結果頁保留一個分享按鈕，分享**純文字**（人格稱號＋命定城市）。
 - 實作：一組 expect/actual —— Android 用 `Intent.ACTION_SEND`、iOS 用 `UIActivityViewController`。
 - 這是全專案**唯一**一組平台特化程式碼。

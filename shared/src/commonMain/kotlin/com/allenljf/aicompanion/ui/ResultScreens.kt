@@ -29,6 +29,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -69,6 +70,7 @@ import com.allenljf.aicompanion.ui.components.DragHandle
 import com.allenljf.aicompanion.viewmodel.AiCompanionViewModel
 import com.allenljf.aicompanion.viewmodel.AnalysisState
 import com.allenljf.aicompanion.viewmodel.CompanionCreationState
+import com.allenljf.aicompanion.viewmodel.ShareImageV2State
 import org.jetbrains.compose.resources.painterResource
 import aicompanion.shared.generated.resources.Res
 import aicompanion.shared.generated.resources.ic_arrow_right_line
@@ -101,6 +103,7 @@ internal fun ResultScreen(
 ) {
     val analysis by viewModel.analysisState.collectAsStateWithLifecycle()
     val result = (analysis as? AnalysisState.Success)?.result
+    val shareImageV2 by viewModel.shareImageV2State.collectAsStateWithLifecycle()
     var showBottomSheet by remember { mutableStateOf(false) }
     val shareText = rememberShareText()
 
@@ -151,6 +154,13 @@ internal fun ResultScreen(
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState()),
                 ) {
+                    // T19：海報 hero 圖很慢（約 80 秒），文字內容不等它顯示——Failed/Idle 不佔版位，
+                    // Loading 顯示輕量佔位，Ready 才補上圖，版面不會因為缺圖而破
+                    ShareImageV2HeroContent(shareImageV2)
+                    if (shareImageV2 != ShareImageV2State.Idle && shareImageV2 != ShareImageV2State.Failed) {
+                        Spacer(Modifier.height(Tokens.spacing200))
+                    }
+
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -252,6 +262,45 @@ internal fun ResultScreen(
                 },
             )
         }
+    }
+}
+
+/**
+ * 海報 hero 圖（T19）：Loading 顯示輕量佔位（不是 shimmer，demo 未移植那套元件，見
+ * CompanionRootScreen 對 CompanionAsyncImage 的說明）；Failed/Idle 不佔版面直接跳過。
+ */
+@Composable
+private fun ShareImageV2HeroContent(state: ShareImageV2State) {
+    when (state) {
+        is ShareImageV2State.Loading -> {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = Tokens.spacing300)
+                    .height(220.dp)
+                    .clip(RoundedCornerShape(Tokens.radiusLg))
+                    .background(Tokens.colorBackgroundPrimaryLighter)
+                    .testTag("companion_result_hero_loading"),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator(color = Tokens.colorBackgroundPrimaryMedium)
+            }
+        }
+
+        is ShareImageV2State.Ready -> {
+            CompanionAsyncImage(
+                url = state.heroUrl,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = Tokens.spacing300)
+                    .height(220.dp)
+                    .clip(RoundedCornerShape(Tokens.radiusLg))
+                    .testTag("companion_result_hero_image"),
+                blurInOnLoad = true,
+            )
+        }
+
+        ShareImageV2State.Idle, ShareImageV2State.Failed -> Unit
     }
 }
 
@@ -654,6 +703,7 @@ internal fun ResultDetailScreen(
 ) {
     val analysis by viewModel.analysisState.collectAsStateWithLifecycle()
     val result = (analysis as? AnalysisState.Success)?.result
+    val shareImageV2 by viewModel.shareImageV2State.collectAsStateWithLifecycle()
     val companionName = creation.companionName.ifBlank { "旅伴" } // TODO: i18n fallback
     val clipboardManager = LocalClipboardManager.current
 
@@ -722,21 +772,34 @@ internal fun ResultDetailScreen(
 
             Spacer(Modifier.height(Tokens.spacing200))
 
-            // 原始碼此處顯示已合成好的海報 bitmap；海報鏈路不做，一律顯示命定城市文字佔位
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp)
-                    .clip(RoundedCornerShape(Tokens.radiusLg))
-                    .background(Tokens.colorBackgroundPrimaryLighter)
-                    .testTag("companion_result_detail_poster_placeholder"),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    "${result.destinationCn} · ${result.destinationCountry}",
-                    color = Tokens.colorTextDark,
-                    fontSize = Tokens.fontSize2,
+            // T19：hero 圖 ready 就顯示；否則（Loading/Failed/Idle）沿用命定城市文字佔位，版面不破
+            val heroUrl = (shareImageV2 as? ShareImageV2State.Ready)?.heroUrl
+            if (heroUrl != null) {
+                CompanionAsyncImage(
+                    url = heroUrl,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp)
+                        .clip(RoundedCornerShape(Tokens.radiusLg))
+                        .testTag("companion_result_detail_hero_image"),
+                    blurInOnLoad = true,
                 )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp)
+                        .clip(RoundedCornerShape(Tokens.radiusLg))
+                        .background(Tokens.colorBackgroundPrimaryLighter)
+                        .testTag("companion_result_detail_poster_placeholder"),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        "${result.destinationCn} · ${result.destinationCountry}",
+                        color = Tokens.colorTextDark,
+                        fontSize = Tokens.fontSize2,
+                    )
+                }
             }
 
             // 海報下方完整呈現分析文字（與產圖等待頁相同的 recommendation / social_post 內容）
@@ -1001,21 +1064,34 @@ private fun CompanionHistoryDetailContent(
                 .verticalScroll(rememberScrollState())
                 .padding(top = Tokens.spacing600),
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = Tokens.spacing300)
-                    .height(200.dp)
-                    .clip(RoundedCornerShape(Tokens.radiusLg))
-                    .background(Tokens.colorBackgroundPrimaryLighter)
-                    .testTag("companion_history_poster_fallback"),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    "${record.result.destinationCn} · ${record.result.destinationCountry}",
-                    color = Tokens.colorTextDark,
-                    fontSize = Tokens.fontSize2,
+            // T19：heroImageUrl 有值（產圖成功回填過）就直接顯示，不必重打一次 35 秒的 share-image-v2
+            if (record.heroImageUrl.isNotBlank()) {
+                CompanionAsyncImage(
+                    url = record.heroImageUrl,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = Tokens.spacing300)
+                        .height(200.dp)
+                        .clip(RoundedCornerShape(Tokens.radiusLg))
+                        .testTag("companion_history_hero_image"),
                 )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = Tokens.spacing300)
+                        .height(200.dp)
+                        .clip(RoundedCornerShape(Tokens.radiusLg))
+                        .background(Tokens.colorBackgroundPrimaryLighter)
+                        .testTag("companion_history_poster_fallback"),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        "${record.result.destinationCn} · ${record.result.destinationCountry}",
+                        color = Tokens.colorTextDark,
+                        fontSize = Tokens.fontSize2,
+                    )
+                }
             }
             CompanionResultHighlightContent(record.result, showDestinationAndTagline = true)
             CompanionResultDetailsContent(result = record.result, bottomSafeArea = bottomBarHeight)
@@ -1106,12 +1182,13 @@ private fun CompanionHistoryDetailContent(
 }
 
 /**
- * 回顧列表縮圖來源：原始碼優先用海報本地合成檔，缺漏時退回 hero 素材。
- * 海報鏈路不做後 posterLocalPath/heroLocalPath 恆為空字串，CompanionAsyncImage 一律顯示 placeholder；
- * 保留此函式對齊原始碼結構，欄位仍在 model 上（供 T17 真後端接回時復用）。
+ * 回顧列表縮圖來源：T19 起優先用 [QuizHistoryRecord.heroImageUrl]（後端遠端圖，產圖成功後回填）；
+ * posterLocalPath/heroLocalPath 是原始碼的本機合成檔路徑，本專案海報 Bitmap 合成不做，恆為空字串，
+ * 留著只是不動既有欄位形狀。三者皆空時 CompanionAsyncImage 顯示 placeholder。
  */
 private fun QuizHistoryRecord.displayPosterUrl(): String =
-    posterLocalPath.takeIf { it.isNotBlank() }?.let { "file://$it" }
+    heroImageUrl.takeIf { it.isNotBlank() }
+        ?: posterLocalPath.takeIf { it.isNotBlank() }?.let { "file://$it" }
         ?: heroLocalPath.takeIf { it.isNotBlank() }?.let { "file://$it" }
         ?: ""
 

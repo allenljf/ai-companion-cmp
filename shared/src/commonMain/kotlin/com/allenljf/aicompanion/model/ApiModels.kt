@@ -551,5 +551,20 @@ data class QuizGalleryItemResponse(
 )
 
 // ---------- POST /companion/share-image-v2 ----------
-// share-image-v2（海報產圖）全鏈路不移植：demo 範圍跳過海報產圖成本，見 migration/01-decisions.md #1、#6。
-// 跳過：ShareImageV2Request、ShareImageV2DataResponse、ShareImageV2ContentResponse、ShareImageV2DecorationsResponse
+// T19：後端已產好合成圖，App 只顯示 hero_url，不做 Bitmap 疊字/輪詢（見 migration/01-decisions.md #6 後續變更）。
+// content/decorations 對應欄位刻意不宣告——ignoreUnknownKeys=true 會自動忽略，這裡只取顯示 hero 需要的最小集合。
+
+@Serializable
+data class ShareImageV2Request(
+    @SerialName("completion_uuid") val completionUuid: String,
+    // 使用者當時捏的旅伴頭像 URL，供後端合成海報參考；demo 目前一律不傳
+    @SerialName("partner_image_url") val partnerImageUrl: String? = null
+)
+
+@Serializable
+data class ShareImageV2DataResponse(
+    // 實測恆為同步回 "ready"（見 scratchpad/sdd/share-image-v2-response.json），不需輪詢
+    @SerialName("status") val status: String = "",
+    @SerialName("hero_url") val heroUrl: String? = null,
+    @SerialName("fail_reason") val failReason: String? = null
+)
