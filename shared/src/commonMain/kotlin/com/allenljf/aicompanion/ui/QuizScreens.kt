@@ -142,7 +142,6 @@ private const val STEP_PREVIEW = 2
 internal fun CreateCompanionScreen(
     viewModel: AiCompanionViewModel,
     onCreated: () -> Unit,
-    onBack: () -> Unit,
 ) {
     val partner by viewModel.partnerState.collectAsStateWithLifecycle()
     val creation by viewModel.creationState.collectAsStateWithLifecycle()
@@ -169,21 +168,26 @@ internal fun CreateCompanionScreen(
                         )
                     },
                     navigationIcon = {
-                        IconButton(
-                            onClick = {
-                                when {
-                                    currentStep == STEP_PREVIEW -> currentStep = STEP_APPEARANCE
-                                    currentStep == STEP_APPEARANCE -> currentStep = STEP_PERSONALITY
-                                    else -> onBack()
-                                }
-                            },
-                            modifier = Modifier.testTag("companion_back_btn"),
-                        ) {
-                            Icon(
-                                painter = painterResource(Res.drawable.ic_arrow_left_line),
-                                contentDescription = null,
-                                tint = Tokens.colorTextDarker,
-                            )
+                        // 第一步沒有上一頁可回（獨立 app 的進入點），改留等寬空位讓標題位置不隨步驟跳動
+                        if (currentStep == STEP_PERSONALITY) {
+                            Spacer(Modifier.size(48.dp))
+                        } else {
+                            IconButton(
+                                onClick = {
+                                    if (currentStep == STEP_PREVIEW) {
+                                        currentStep = STEP_APPEARANCE
+                                    } else {
+                                        currentStep = STEP_PERSONALITY
+                                    }
+                                },
+                                modifier = Modifier.testTag("companion_back_btn"),
+                            ) {
+                                Icon(
+                                    painter = painterResource(Res.drawable.ic_arrow_left_line),
+                                    contentDescription = null,
+                                    tint = Tokens.colorTextDarker,
+                                )
+                            }
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(Tokens.colorWhite),
@@ -309,7 +313,7 @@ internal fun CreateCompanionScreen(
             }
         }
     } else {
-        ScreenScaffold(title = "打造你的專屬旅伴", screenTag = "companion_create_screen", onBack = onBack) { // TODO: i18n - 建立旅伴標題
+        ScreenScaffold(title = "打造你的專屬旅伴", screenTag = "companion_create_screen") { // TODO: i18n - 建立旅伴標題
             // ScreenScaffold 的外層 Column 套用 verticalScroll，會把高度限制變成無限，Modifier.fillMaxSize()
             // 在此情境下對高度沒有效果（無額外空間可置中）。改用 heightIn(min = ...) 強制保留至少一個螢幕高度
             // （扣除標題列估計高度）的空間，讓 contentAlignment = Center 能真正把內容置中，而非貼齊左上角。
@@ -1114,13 +1118,9 @@ internal fun CompanionHomeScreen(
     onTravelDna: () -> Unit,
     onHistory: () -> Unit,
     onQuizGallery: () -> Unit,
-    onBack: () -> Unit,
     onRecreate: () -> Unit,
     onImportItinerary: () -> Unit = {},
     onPlanTrip: () -> Unit = {},
-    onPlanTripWithOrders: () -> Unit = {},
-    onPlanTripWithWish: () -> Unit = {},
-    onPlanTripWithHistory: () -> Unit = {},
     onTripList: () -> Unit = {},
     savedTrips: List<SavedTripRecord> = emptyList(),
     onOpenSavedTrip: (SavedTripRecord) -> Unit = {},
@@ -1146,16 +1146,8 @@ internal fun CompanionHomeScreen(
                 .padding(horizontal = Tokens.spacing200, vertical = Tokens.spacing150),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            IconButton(
-                onClick = onBack,
-                modifier = Modifier.testTag("companion_back_btn"),
-            ) {
-                Icon(
-                    painter = painterResource(Res.drawable.ic_arrow_left_line),
-                    contentDescription = null,
-                    tint = Tokens.colorTextDarker,
-                )
-            }
+            // 獨立 app 的首頁沒有上一頁可回，留等寬空位讓標題維持置中
+            Spacer(Modifier.size(48.dp))
             Spacer(Modifier.weight(1f))
             Text(
                 "我的 AI 旅伴", // TODO: i18n
@@ -1425,45 +1417,6 @@ internal fun CompanionHomeScreen(
                 subtitle = "還沒有想法？沒關係，從頭聊，一步步排出來", // TODO: i18n
                 testTag = "companion_home_plan_btn",
                 onClick = onPlanTrip,
-            )
-
-            Spacer(Modifier.height(Tokens.spacing150))
-
-            // demo：帶訂單開場，抓即將出發的訂單材料丟給 LLM 判斷目的地選項（見 startPlanFromOrders）
-            HomeIntentCard(
-                iconRes = painterResource(Res.drawable.ic_road_map_line),
-                iconTint = Tokens.colorTextPrimaryDark,
-                iconBackground = Tokens.colorBackgroundPrimaryLighter,
-                title = "一起規劃旅遊行程(帶訂單)", // TODO: i18n
-                subtitle = "還沒有想法？沒關係，從頭聊，一步步排出來", // TODO: i18n
-                testTag = "companion_home_plan_with_orders_btn",
-                onClick = onPlanTripWithOrders,
-            )
-
-            Spacer(Modifier.height(Tokens.spacing150))
-
-            // demo：願望清單開場，抓收藏商品材料丟給 LLM 聚合判斷城市選項（見 startPlanFromWish）
-            HomeIntentCard(
-                iconRes = painterResource(Res.drawable.ic_road_map_line),
-                iconTint = Tokens.colorTextPrimaryDark,
-                iconBackground = Tokens.colorBackgroundPrimaryLighter,
-                title = "一起規劃旅遊行程(從心願清單)", // TODO: i18n
-                subtitle = "從你收藏過的商品，找出你想去的地方", // TODO: i18n
-                testTag = "companion_home_plan_with_wish_btn",
-                onClick = onPlanTripWithWish,
-            )
-
-            Spacer(Modifier.height(Tokens.spacing150))
-
-            // demo：瀏覽紀錄開場，抓瀏覽/購買商品材料丟給 LLM 聚合判斷城市選項（見 startPlanFromHistory）
-            HomeIntentCard(
-                iconRes = painterResource(Res.drawable.ic_road_map_line),
-                iconTint = Tokens.colorTextPrimaryDark,
-                iconBackground = Tokens.colorBackgroundPrimaryLighter,
-                title = "一起規劃旅遊行程(從瀏覽記錄)", // TODO: i18n
-                subtitle = "從你最近看過的商品，找出你想去的地方", // TODO: i18n
-                testTag = "companion_home_plan_with_history_btn",
-                onClick = onPlanTripWithHistory,
             )
         }
 

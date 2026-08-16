@@ -250,13 +250,15 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 
 - ~~[Minor/T10] TripListScreen.formatSavedAtDate 以 UTC 日界切分日期（原版用裝置時區），Taipei 使用者每日 00:00–08:00 存的行程日期會少一天。~~ 已修：final review 時抽成共用 helper `CompanionRootScreen.formatEpochMillisAsDate`，epoch 先加 8 小時（台北時區近似值），標 `// TODO: timezone` 待日後接精確時區換算
 - 全專案無自動化測試，品質依賴手動雙平台實跑（`:androidApp:assembleDebug` + `:shared:compileKotlinIosSimulatorArm64`）
-- [Minor/iOS] 結果頁頂部標題會被 Dynamic Island 遮住（hero 區 safe area 未處理），Android 不受影響——低優先待修
+- ~~[Minor/iOS] 結果頁頂部標題會被 Dynamic Island 遮住~~ 已修：ResultScreen 根 Box 補 `statusBarsPadding()`
 - [Minor/後端] LLM 回應偶爾簡繁混雜（travel-summary 開場訊息出現簡體）——後端 prompt 的 locale 約束問題，app 端無關
 - [Minor/預期] 商品推薦卡固定顯示 mock 目錄（大阪環球影城等）與真實行程城市可能不匹配——商品搜尋無後端端點，待後端補端點後接真資料
 - [備註] 後端 LLM 偶發 429（Groq rate limit）→ 走軟失敗兜底文案，屬預期行為
 - ~~[Image loading] `CompanionAsyncImage` 為佔位版，一律顯示 placeholder，不載入真圖~~ 已修（T18）：接 Coil 3，真頭像/題目圖可正常載入，Android emulator 截圖確認
 
 ## 決策補充紀錄
+
+- UI 調整（2026-08-16，獨立 app 定位）：首頁與建立旅伴第一步的返回鍵移除（獨立 app 沒有上一頁，原本點了沒反應），改留等寬 Spacer 讓標題不位移；建立旅伴第二/三步的返回鍵**保留**（那是精靈步驟回退，實際有作用）。首頁移除「帶訂單／從心願清單／從瀏覽記錄」三個開場入口（獨立 app 不會有這些紀錄），對應的 `onPlanTripWith*` 參數與呼叫點一併移除；ViewModel 的 `startPlanFromOrders/Wish/History` 與 `OrderOpening` step 保留不動（不重寫狀態機），成為暫時無入口的死路徑
 
 （執行中臨場決定的事記在這裡，例如 ViewModel 海報分支的處理方式、被過濾掉的 icon 清單）
 

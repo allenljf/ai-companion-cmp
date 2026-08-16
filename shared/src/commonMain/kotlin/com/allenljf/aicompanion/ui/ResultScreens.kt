@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -107,7 +108,9 @@ internal fun ResultScreen(
         modifier = Modifier
             .fillMaxSize()
             .testTag("companion_result_screen")
-            .background(Tokens.colorWhite),
+            .background(Tokens.colorWhite)
+            // 標題直接貼齊畫面頂端會被瀏海／動態島遮住，整頁內容退到狀態列下方
+            .statusBarsPadding(),
     ) {
         when {
             analysis is AnalysisState.SoftFailed || analysis is AnalysisState.Error -> {

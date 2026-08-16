@@ -96,7 +96,6 @@ fun AiCompanionRoot(
                     viewModel.confirmCompanionCreation()
                     step = AiCompanionStep.Intro
                 },
-                onBack = onFinish,
             )
         }
 
@@ -144,25 +143,12 @@ fun AiCompanionRoot(
                     viewModel.startPlanFromZero()
                     step = AiCompanionStep.PlanChat
                 },
-                onPlanTripWithOrders = {
-                    viewModel.startPlanFromOrders()
-                    step = AiCompanionStep.OrderOpening
-                },
-                onPlanTripWithWish = {
-                    viewModel.startPlanFromWish()
-                    step = AiCompanionStep.OrderOpening
-                },
-                onPlanTripWithHistory = {
-                    viewModel.startPlanFromHistory()
-                    step = AiCompanionStep.OrderOpening
-                },
                 savedTrips = savedTrips,
                 onOpenSavedTrip = { trip ->
                     viewModel.openSavedTrip(trip)
                     tripReturnStep = AiCompanionStep.Home
                     step = AiCompanionStep.TripResult
                 },
-                onBack = onFinish,
                 onRecreate = {
                     viewModel.recreateCompanion()
                     step = AiCompanionStep.CreateCompanion
