@@ -944,7 +944,7 @@ internal fun CompanionBornScreen(
         ) {
             Box(Modifier.weight(3f).testTag("companion_born_home_btn")) {
                 AppButton(
-                    buttonText = "進入旅伴主頁", // TODO: i18n
+                    buttonText = "進入主頁", // TODO: i18n
                     buttonType = ButtonType.PRIMARY,
                     buttonState = ButtonState.ENABLED,
                     buttonSizeType = ButtonSizeType.Md,
