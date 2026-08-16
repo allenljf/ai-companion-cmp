@@ -234,13 +234,11 @@ fun AiCompanionRoot(
             val creation by viewModel.creationState.collectAsStateWithLifecycle()
             val guideState by viewModel.travelGuideState.collectAsStateWithLifecycle()
             val reviseState by viewModel.tripReviseState.collectAsStateWithLifecycle()
-            val productStates by viewModel.tripProductStates.collectAsStateWithLifecycle()
             val savedTrips by viewModel.savedTrips.collectAsStateWithLifecycle()
             LaunchedEffect(Unit) { viewModel.loadSavedTrips() }
             TripResultScreen(
                 state = guideState,
                 reviseState = reviseState,
-                productStates = productStates,
                 avatarUrl = creation.avatarUrl,
                 companionName = creation.companionName.ifBlank { "旅伴" }, // TODO: i18n fallback
                 isSaved = (guideState as? TravelGuideState.Loaded)?.trip?.let { activeTrip ->
@@ -256,7 +254,6 @@ fun AiCompanionRoot(
                 onRetryRevise = { viewModel.retryTripRevise() },
                 onDismissRevise = { viewModel.endTripRevise() },
                 onReorderItems = { dayNumber, from, to -> viewModel.reorderDayItems(dayNumber, from, to) },
-                onSearchProduct = { spotName -> viewModel.searchTripProduct(spotName) },
             )
         }
 

@@ -9,7 +9,6 @@ import com.allenljf.aicompanion.model.QuizResult
 import com.allenljf.aicompanion.model.SavedTripRecord
 import com.allenljf.aicompanion.model.ShareImageV2Result
 import com.allenljf.aicompanion.model.TravelDestinationOption
-import com.allenljf.aicompanion.model.TripProductCard
 
 sealed interface PartnerState {
     data object Idle : PartnerState
@@ -269,20 +268,6 @@ sealed interface TravelGuideState {
     data object SoftFailed : TravelGuideState // fail_reason 有值（days=[]）→ 顯示重試
     data object Error : TravelGuideState // 網路等硬失敗 → 可重試
     data object InvalidRequest : TravelGuideState // 400/110001 → 通用錯誤，不提供重試
-}
-
-/**
- * 行程景點卡的背景商品搜尋狀態（以景點名稱為 key，見 AiCompanionViewModel.tripProductStates）。
- * 找不到商品或查詢失敗都收斂成 [NotFound]——這只是錦上添花的功能，不對使用者顯示錯誤，直接不顯示卡片。
- */
-sealed interface TripProductState {
-    data object Loading : TripProductState
-    data class Found(
-        val products: List<TripProductCard>,
-        // 來自 API metadata.pagination.total_count，「還有 N 項」須用這個真實總數，不可用 products.size 代替
-        val totalCount: Int,
-    ) : TripProductState
-    data object NotFound : TripProductState
 }
 
 /** 「帶訂單開場」狀態：抓訂單材料 → 丟 LLM 判斷目的地選項（travel-summary-from-orders，後端尚未實作）。 */

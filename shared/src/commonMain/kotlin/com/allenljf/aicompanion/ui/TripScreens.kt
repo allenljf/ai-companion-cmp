@@ -11,6 +11,8 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -73,9 +75,10 @@ import com.allenljf.aicompanion.ui.components.ButtonSizeType
 import com.allenljf.aicompanion.ui.components.ButtonState
 import com.allenljf.aicompanion.ui.components.ButtonType
 import com.allenljf.aicompanion.ui.components.DragHandle
+import com.allenljf.aicompanion.platform.rememberOpenUrl
 import com.allenljf.aicompanion.viewmodel.TravelGuideState
-import com.allenljf.aicompanion.viewmodel.TripProductState
 import com.allenljf.aicompanion.viewmodel.TripReviseState
+import io.ktor.http.encodeURLParameter
 import org.jetbrains.compose.resources.painterResource
 import aicompanion.shared.generated.resources.Res
 import aicompanion.shared.generated.resources.ic_airplane_line
@@ -87,7 +90,6 @@ import aicompanion.shared.generated.resources.ic_delete_line
 import aicompanion.shared.generated.resources.ic_heart_fill
 import aicompanion.shared.generated.resources.ic_heart_line
 import aicompanion.shared.generated.resources.ic_location_arrow_line
-import aicompanion.shared.generated.resources.ic_star_fill
 import aicompanion.shared.generated.resources.ic_train_line
 import aicompanion.shared.generated.resources.ic_walk_line
 import kotlinx.coroutines.delay
@@ -455,7 +457,6 @@ private fun TripFailedContent(
 internal fun TripResultScreen(
     state: TravelGuideState,
     reviseState: TripReviseState,
-    productStates: Map<String, TripProductState> = emptyMap(),
     avatarUrl: String,
     companionName: String,
     isSaved: Boolean,
@@ -468,7 +469,6 @@ internal fun TripResultScreen(
     onRetryRevise: () -> Unit,
     onDismissRevise: () -> Unit,
     onReorderItems: (dayNumber: Int, fromIndex: Int, toIndex: Int) -> Unit = { _, _, _ -> },
-    onSearchProduct: (String) -> Unit = {},
 ) {
     Box(
         modifier = Modifier
@@ -480,7 +480,6 @@ internal fun TripResultScreen(
             is TravelGuideState.Loaded -> TripLoadedContent(
                 trip = state.trip,
                 reviseState = reviseState,
-                productStates = productStates,
                 avatarUrl = avatarUrl,
                 companionName = companionName,
                 isSaved = isSaved,
@@ -493,7 +492,6 @@ internal fun TripResultScreen(
                 onRetryRevise = onRetryRevise,
                 onDismissRevise = onDismissRevise,
                 onReorderItems = onReorderItems,
-                onSearchProduct = onSearchProduct,
             )
 
             TravelGuideState.SoftFailed, TravelGuideState.Error, TravelGuideState.Loading ->
@@ -511,7 +509,6 @@ internal fun TripResultScreen(
 private fun TripLoadedContent(
     trip: SavedTripRecord,
     reviseState: TripReviseState,
-    productStates: Map<String, TripProductState>,
     avatarUrl: String,
     companionName: String,
     isSaved: Boolean,
@@ -524,7 +521,6 @@ private fun TripLoadedContent(
     onRetryRevise: () -> Unit,
     onDismissRevise: () -> Unit,
     onReorderItems: (dayNumber: Int, fromIndex: Int, toIndex: Int) -> Unit,
-    onSearchProduct: (String) -> Unit,
 ) {
     var tab by remember { mutableIntStateOf(0) }
     val tabs = listOf("總覽") + trip.days.map { "Day ${it.day}" } // TODO: i18n
@@ -681,8 +677,7 @@ private fun TripLoadedContent(
                                     item = dayItem,
                                     isFirst = index == firstCardIndex,
                                     isLast = index == currentDay.items.lastIndex,
-                                    productState = productStates[dayItem.displayTitle],
-                                    onSearchProduct = onSearchProduct,
+                                    destination = trip.city,
                                 )
                             }
                         }
@@ -809,8 +804,7 @@ private fun TimelineStopCard(
     item: TravelGuideDayItem,
     isFirst: Boolean,
     isLast: Boolean,
-    productState: TripProductState?,
-    onSearchProduct: (String) -> Unit,
+    destination: String,
 ) {
     Row {
         Column(
@@ -915,109 +909,65 @@ private fun TimelineStopCard(
                     )
                 }
             }
-            // 商品搜尋卡：以景點名稱為關鍵字背景搜尋，找到商品才顯示（見 TripProductCard）
+            // 景點外部平台搜尋按鈕（見 TripSpotSearchLinks）：純開網頁，不叫任何搜尋 API
             if (item.isSpot && item.displayTitle.isNotBlank()) {
-                LaunchedEffect(item.displayTitle) { onSearchProduct(item.displayTitle) }
-                TripProductCard(spotName = item.displayTitle, state = productState)
+                TripSpotSearchLinks(destination = destination, spotName = item.displayTitle)
             }
         }
     }
 }
 
 /**
- * 景點商品搜尋卡：用景點名稱背景打既有搜尋 API（見 SearchTripProductsUseCase），
- * 找到 ≥1 個商品才顯示——第一項商品的縮圖＋名稱＋評分＋價格，其餘顯示「還有 N 項相關商品」；
- * 整張卡原可點擊導去商品搜尋結果頁（App Link deeplink），demo 拿掉，改 no-op。
- * Loading／NotFound／null 皆不顯示任何東西，避免行程頁被大量 loading 佔位塞滿。
+ * 景點外部平台搜尋按鈕（取代原本的商品搜尋卡）：純開網頁、不叫任何搜尋 API。
+ *
+ * 背景：商品搜尋卡原本要打後端搜尋 API 才能顯示縮圖／評分／價格與「還有 N 項」，但沒有真後端可用——
+ * KKday 內部端點（v2.1/search/product_list）依專案定案不接，三家主要 OTA（KKday/Klook/Trip.com）
+ * 也都沒有公開的商品搜尋 API（見 migration/research-ota-product-apis.md）。改成 5 個固定平台的按鈕，
+ * 點擊直接開各平台前台搜尋結果頁，關鍵字統一「{目的地} {景點名}」——這些 URL 格式都經過瀏覽器實測驗證。
+ * 沒有預覽資料（縮圖/評分/價格/數量），這是純深連結必然的取捨。
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun TripProductCard(spotName: String, state: TripProductState?) {
-    if (state !is TripProductState.Found || state.products.isEmpty()) return
-    val firstProduct = state.products.first()
-    // 用 API 回的實際總數（totalCount）算「還有 N 項」，不可用 products.size 代替——
-    // 那只是本次抓回的筆數上限，跟真正符合關鍵字的商品總數無關
-    val moreCount = (state.totalCount - 1).coerceAtLeast(0)
+private fun TripSpotSearchLinks(destination: String, spotName: String) {
+    val openUrl = rememberOpenUrl()
+    val keyword = listOf(destination, spotName).filter { it.isNotBlank() }.joinToString(" ")
+    if (keyword.isBlank()) return
 
-    Column(
+    val platforms = remember(keyword) {
+        listOf(
+            "KKday" to "https://www.kkday.com/zh-tw/product/productlist/${keyword.encodeURLParameter()}",
+            "Klook" to "https://www.klook.com/zh-TW/search/result/?query=${keyword.encodeURLParameter()}&search_scope=main_search",
+            "Trip.com" to "https://tw.trip.com/things-to-do/list?pagetype=city&keyword=${keyword.encodeURLParameter()}&pshowcode=all&kwdfrom=srch&ext-searchpage=1",
+            "Agoda" to "https://www.agoda.com/zh-tw/activities/search?keyword=${keyword.encodeURLParameter()}",
+            // GetYourGuide 的 q 參數用 + 表示空白（form-urlencoded 風格），跟其他四家的 %20 不同，
+            // 兩者都是 Allen 提供的真實 URL 逐一驗證過的格式，不要對齊成同一種編碼
+            "GetYourGuide" to "https://www.getyourguide.com/zh-tw/s/?q=${keyword.encodeURLParameter(spaceToPlus = true)}&searchSource=7&src=search_bar&adults=1",
+        )
+    }
+
+    FlowRow(
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = Tokens.spacing100)
-            .clip(RoundedCornerShape(Tokens.radiusMd))
-            .border(1.dp, Tokens.colorBorderLight, RoundedCornerShape(Tokens.radiusMd))
-            .clickable {
-                // TODO: deeplink（原用 App Link 開商品搜尋結果頁；demo 拿掉）
-            }
-            .testTag("companion_trip_product_card"),
+            .testTag("companion_trip_product_links"),
+        horizontalArrangement = Arrangement.spacedBy(Tokens.spacing075),
     ) {
-        Row(
-            modifier = Modifier.padding(Tokens.spacing100),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            CompanionAsyncImage(
-                url = firstProduct.imageUrl,
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(RoundedCornerShape(Tokens.radiusSm)),
-                placeholder = {
-                    Box(
-                        modifier = Modifier
-                            .size(56.dp)
-                            .background(Tokens.colorBackgroundSurfaceMedium),
-                    )
-                },
-            )
-            Spacer(Modifier.width(Tokens.spacing100))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    firstProduct.name,
-                    fontWeight = FontWeight(Tokens.fontWeightMediumAndroid),
-                    fontSize = Tokens.fontSize2,
-                    color = Tokens.colorTextDarker,
-                    maxLines = 2,
-                )
-                Spacer(Modifier.height(Tokens.spacing025))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (firstProduct.ratingCount > 0) {
-                        Icon(
-                            painter = painterResource(Res.drawable.ic_star_fill),
-                            contentDescription = null,
-                            tint = Tokens.colorBackgroundHighlightMedium,
-                            modifier = Modifier.size(Tokens.dimensionIcon2xs),
-                        )
-                        Text(
-                            "${firstProduct.ratingStar}(${firstProduct.ratingCount})",
-                            fontSize = Tokens.fontSize1,
-                            color = Tokens.colorTextMedium,
-                            modifier = Modifier.padding(start = Tokens.spacing025),
-                        )
-                        Spacer(Modifier.width(Tokens.spacing075))
-                    }
-                    Text(
-                        "${firstProduct.currencySymbol}${firstProduct.price.toInt()} 起", // TODO: i18n
-                        fontWeight = FontWeight(Tokens.fontWeightBold),
-                        fontSize = Tokens.fontSize2,
-                        color = Tokens.colorTextPrimaryDark,
-                    )
-                }
-            }
-        }
-        if (moreCount > 0) {
+        platforms.forEach { (label, url) ->
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(Tokens.colorBorderLighter),
-            )
-            Text(
-                "還有 $moreCount 項相關商品", // TODO: i18n
-                fontSize = Tokens.fontSize2,
-                fontWeight = FontWeight(Tokens.fontWeightMediumAndroid),
-                color = Tokens.colorTextPrimaryDark,
-                modifier = Modifier.padding(
-                    horizontal = Tokens.spacing100,
-                    vertical = Tokens.spacing075,
-                ),
-            )
+                    .clip(RoundedCornerShape(Tokens.radiusMd))
+                    .border(1.dp, Tokens.colorBorderLight, RoundedCornerShape(Tokens.radiusMd))
+                    .clickable { openUrl(url) }
+                    .padding(horizontal = Tokens.spacing150, vertical = Tokens.spacing075)
+                    .testTag("companion_trip_product_link_${label}"),
+            ) {
+                Text(
+                    label,
+                    fontSize = Tokens.fontSize1,
+                    fontWeight = FontWeight(Tokens.fontWeightMediumAndroid),
+                    color = Tokens.colorTextPrimaryDark,
+                )
+            }
         }
     }
 }

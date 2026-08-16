@@ -12,7 +12,6 @@ import com.allenljf.aicompanion.domain.FetchTravelSummaryFromHistoryUseCase
 import com.allenljf.aicompanion.domain.FetchTravelSummaryFromOrdersUseCase
 import com.allenljf.aicompanion.domain.FetchTravelSummaryFromWishUseCase
 import com.allenljf.aicompanion.domain.FetchTravelSummaryUseCase
-import com.allenljf.aicompanion.domain.SearchTripProductsUseCase
 import com.allenljf.aicompanion.domain.GetAiPartnerUseCase
 import com.allenljf.aicompanion.domain.GetLocalCompanionUseCase
 import com.allenljf.aicompanion.domain.GetQuizGalleryUseCase
@@ -90,7 +89,6 @@ class AiCompanionViewModel(
     private val fetchRecommendCityUseCase: FetchRecommendCityUseCase,
     private val fetchTravelGuideUseCase: FetchTravelGuideUseCase,
     private val fetchTravelReviseUseCase: FetchTravelReviseUseCase,
-    private val searchTripProductsUseCase: SearchTripProductsUseCase,
     private val getSavedTripsUseCase: GetSavedTripsUseCase,
     private val saveSavedTripsUseCase: SaveSavedTripsUseCase,
     private val getUpcomingOrderMaterialsUseCase: GetUpcomingOrderMaterialsUseCase,
@@ -1360,39 +1358,6 @@ class AiCompanionViewModel(
                 val updated = saved.map { if (it.createdAt == mergedTrip.createdAt) mergedTrip else it }
                 saveSavedTripsUseCase(updated).onSuccess { _savedTrips.value = updated }
             }
-        }
-    }
-
-    // ---------- 行程景點卡：背景用景點名稱搜尋商品 ----------
-
-    private val _tripProductStates = MutableStateFlow<Map<String, TripProductState>>(emptyMap())
-    val tripProductStates: StateFlow<Map<String, TripProductState>> = _tripProductStates.asStateFlow()
-
-    /** 以景點名稱為 key 快取查詢結果，同一名稱只查一次（跨換天/重組不重複打 API）。 */
-    fun searchTripProduct(spotName: String) {
-        if (spotName.isBlank() || _tripProductStates.value.containsKey(spotName)) return
-        _tripProductStates.update { it + (spotName to TripProductState.Loading) }
-        // 帶目的地城市一起搜尋，避免同名景點在其他城市誤配（例如「中央市場」）；
-        // 快取 key 仍用純景點名稱（畫面查詢用同一份 key），城市只影響實際打出去的關鍵字
-        val city = (_travelGuideState.value as? TravelGuideState.Loaded)?.trip?.city.orEmpty()
-        val keyword = if (city.isNotBlank()) "$city $spotName" else spotName
-        viewModelScope.launch {
-            searchTripProductsUseCase(keyword)
-                .onSuccess { result ->
-                    _tripProductStates.update {
-                        it + (
-                            spotName to (
-                                result.products.takeIf { p -> p.isNotEmpty() }
-                                    ?.let { products -> TripProductState.Found(products, result.totalCount) }
-                                    ?: TripProductState.NotFound
-                                )
-                            )
-                    }
-                }
-                .onFailure {
-                    // 搜尋失敗不視為錯誤（純附加功能）：收斂成 NotFound，畫面直接不顯示卡片
-                    _tripProductStates.update { it + (spotName to TripProductState.NotFound) }
-                }
         }
     }
 

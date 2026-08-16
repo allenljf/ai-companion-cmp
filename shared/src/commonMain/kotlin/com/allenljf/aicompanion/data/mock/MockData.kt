@@ -22,7 +22,6 @@ import com.allenljf.aicompanion.model.TravelSummaryFromProductsResult
 import com.allenljf.aicompanion.model.TravelSummaryResult
 import com.allenljf.aicompanion.model.TripCityProducts
 import com.allenljf.aicompanion.model.TripOrderMaterial
-import com.allenljf.aicompanion.model.TripProductCard
 import com.allenljf.aicompanion.model.TripProductMaterial
 import com.allenljf.aicompanion.model.TripProductRef
 import kotlinx.coroutines.delay
@@ -1052,26 +1051,5 @@ object MockData {
             introduction = "近距離認識濟州島特有的海女文化，並品嚐現撈海產。",
             destinationNames = listOf("濟州島"),
         ),
-    )
-
-    // ============================================================
-    // 行程頁景點卡「用景點名稱找可訂商品」搜尋 catalog
-    // ============================================================
-
-    val searchCatalog: List<TripProductCard> = listOf(
-        TripProductCard(id = "prod-001", name = "大阪環球影城門票", price = 2680.0, currencySymbol = "NT$", ratingStar = 4.8, ratingCount = 15234),
-        TripProductCard(id = "prod-002", name = "心齋橋觀光乘車券", price = 350.0, currencySymbol = "NT$", ratingStar = 4.5, ratingCount = 892),
-        TripProductCard(id = "prod-003", name = "道頓堀觀光船", price = 480.0, currencySymbol = "NT$", ratingStar = 4.6, ratingCount = 1203),
-        TripProductCard(id = "prod-004", name = "清水寺周邊人力車體驗", price = 1200.0, currencySymbol = "NT$", ratingStar = 4.9, ratingCount = 456),
-        TripProductCard(id = "prod-005", name = "嵐山竹林包車一日遊", price = 3200.0, currencySymbol = "NT$", ratingStar = 4.7, ratingCount = 678),
-        TripProductCard(id = "prod-006", name = "伏見稻荷大社參拜體驗", price = 0.0, currencySymbol = "NT$", ratingStar = 4.8, ratingCount = 2341),
-        TripProductCard(id = "prod-007", name = "東京晴空塔展望台門票", price = 990.0, currencySymbol = "NT$", ratingStar = 4.6, ratingCount = 8921),
-        TripProductCard(id = "prod-008", name = "東京迪士尼樂園門票", price = 2450.0, currencySymbol = "NT$", ratingStar = 4.9, ratingCount = 23456),
-        TripProductCard(id = "prod-009", name = "淺草人力車體驗", price = 1500.0, currencySymbol = "NT$", ratingStar = 4.7, ratingCount = 534),
-        TripProductCard(id = "prod-010", name = "明治神宮參拜導覽", price = 600.0, currencySymbol = "NT$", ratingStar = 4.5, ratingCount = 342),
-        TripProductCard(id = "prod-011", name = "首爾南山首爾塔套票", price = 780.0, currencySymbol = "NT$", ratingStar = 4.6, ratingCount = 3456),
-        TripProductCard(id = "prod-012", name = "北村韓服體驗", price = 950.0, currencySymbol = "NT$", ratingStar = 4.7, ratingCount = 1234),
-        TripProductCard(id = "prod-013", name = "濟州島海女文化體驗", price = 1600.0, currencySymbol = "NT$", ratingStar = 4.4, ratingCount = 187),
-        TripProductCard(id = "prod-014", name = "沖繩美麗海水族館門票", price = 1050.0, currencySymbol = "NT$", ratingStar = 4.8, ratingCount = 5678),
     )
 }

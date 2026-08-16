@@ -217,15 +217,15 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 | model/ApiModels.kt | 502 | model/ApiModels.kt | T4 | ✅ |
 | model/DomainModels.kt | 465 | model/DomainModels.kt | T4 | ✅ |
 | model/ModelMappings.kt | 255 | model/ModelMappings.kt | T4 | ✅ |
-| model/TripProductSearchModels.kt | 21 | model/TripProductSearchModels.kt | T4 | ✅ |
+| model/TripProductSearchModels.kt | 21 | model/TripProductSearchModels.kt | T4 | ⛔ T22 移除（商品搜尋改純開網頁） |
 | api-service/ICompanionApiService.kt | 93 | data/remote/CompanionApiClient.kt（Ktor，去 Retrofit/B2C 化） | T17 | ✅ |
 | api-service/ITripProductSearchApiService.kt | 19 | — 同上 | T5/T17 | ⛔ |
 | domain-contract/CompanionRepository.kt | 167 | data/CompanionRepository.kt | T5 | ✅ |
 | domain-contract/CompanionOrderRepository.kt | 18 | data/CompanionOrderRepository.kt | T5 | ✅ |
-| domain-contract/TripProductSearchRepository.kt | 20 | data/TripProductSearchRepository.kt | T5 | ✅ |
+| domain-contract/TripProductSearchRepository.kt | 20 | data/TripProductSearchRepository.kt | T5 | ⛔ T22 移除（商品搜尋改純開網頁） |
 | data-repository/CompanionRepositoryImpl.kt | 555 | data/mock/MockCompanionRepository.kt + data/mock/MockData.kt（重寫為 mock） | T5 | ✅ |
 | data-repository/CompanionOrderRepositoryImpl.kt | 83 | data/mock/MockCompanionOrderRepository.kt | T5 | ✅ |
-| data-repository/TripProductSearchRepositoryImpl.kt | 28 | data/mock/MockTripProductSearchRepository.kt | T5 | ✅ |
+| data-repository/TripProductSearchRepositoryImpl.kt | 28 | data/mock/MockTripProductSearchRepository.kt | T5 | ⛔ T22 移除（商品搜尋改純開網頁） |
 | （新增，無對應原始檔） | — | data/remote/RemoteCompanionRepository.kt + data/remote/RemoteCompanionOrderRepository.kt | T17 | ✅ |
 | data-repository/CompanionApiException.kt | 79 | data/CompanionApiException.kt（瘦身，拿掉 B2C envelope 解析） | T5 | ✅ |
 | domain-usecase/（26 檔，扣 ShareImageV2） | ~600 | domain/*.kt | T7 | ✅ |
@@ -257,6 +257,24 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 - ~~[Image loading] `CompanionAsyncImage` 為佔位版，一律顯示 placeholder，不載入真圖~~ 已修（T18）：接 Coil 3，真頭像/題目圖可正常載入，Android emulator 截圖確認
 
 ## 決策補充紀錄
+
+- T22 商品搜尋改純開網頁（2026-08-17）：行程頁景點卡原本要打搜尋 API 才能顯示縮圖/評分/價格與
+  「還有 N 項」，但沒有真後端可用（KKday 內部 v2.1/search/product_list 依定案不接，KKday/Klook/
+  Trip.com 三家主要 OTA 也都沒有公開商品搜尋 API，見 research-ota-product-apis.md）。改成純開網頁：
+  移除整條商品搜尋死碼——`data/TripProductSearchRepository.kt`（介面）、
+  `data/mock/MockTripProductSearchRepository.kt`、`domain/SearchTripProductsUseCase.kt`、
+  `model/TripProductSearchModels.kt`（TripProductCard/TripProductSearchResult/Request 三型別）、
+  `MockData.searchCatalog`、ViewModel 的 `searchTripProduct()`/`_tripProductStates`、
+  `AiCompanionStates.TripProductState`、AppModule.kt 對應 DI 綁定與建構子參數全部刪除。
+  `ui/TripScreens.kt` 的 `TripProductCard` composable 換成 `TripSpotSearchLinks`：5 顆固定按鈕
+  （KKday/Klook/Trip.com/Agoda/GetYourGuide），關鍵字統一「{目的地} {景點名}」（`trip.city` + 景點
+  displayTitle），複用 T20 已有的 `rememberOpenUrl()` expect/actual，無新增平台特化。
+  5 個 URL 格式全部經瀏覽器實測驗證可用（含跨 Cloudflare bot 檢查頁），編碼細節：KKday/Klook/
+  Trip.com/Agoda 空白編碼成 `%20`（`encodeURLParameter()` 預設），GetYourGuide 的 `q` 參數用
+  `+`（`encodeURLParameter(spaceToPlus = true)`）——兩種編碼皆對照 Allen 提供的真實 URL 逐一核對，
+  不要對齊成同一種。**沒有商品預覽資料**（縮圖/評分/價格/數量），這是純深連結必然的取捨：只能做
+  「點擊跳轉去對的搜尋結果」，做不到「先知道第一項是什麼」，因為那個資訊只存在後端商品資料庫，
+  URL 本身不會告訴你。
 
 - 旅行 DNA 回顧詳情一致化（2026-08-17）：歷史詳情改用與答題完成結果頁相同的沈浸式 hero（含目的地／tagline／stamp 資訊卡），已回填的 hero URL 直接顯示，缺圖仍保留相同比例的品牌色 fallback；右上新增 X 回到回顧列表。更多動作統一為繼續規劃、文字／IG 分享、看其他人、回到旅伴，歷史紀錄的「繼續規劃」以該筆 `QuizCompletionResult` 開啟規劃；移除全域更多動作選單的「搜尋相關產品」列與 KKday 搜尋 deeplink。
 - 結果頁分享文案／揭曉按鈕微調（2026-08-17）：所有 `social_post` 顯示、複製與系統分享入口在 UI 層統一移除不分大小寫的 `#KKday` hashtag；打字機揭曉頁 `PosterReadyBanner` 的右箭頭改為主色 `colorBackgroundPrimaryMedium`，提高淺色圓形底上的辨識度。

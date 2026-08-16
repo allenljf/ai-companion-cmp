@@ -3,10 +3,8 @@ package com.allenljf.aicompanion.di
 import com.allenljf.aicompanion.data.CompanionOrderRepository
 import com.allenljf.aicompanion.data.CompanionRepository
 import com.allenljf.aicompanion.data.LocalCompanionStore
-import com.allenljf.aicompanion.data.TripProductSearchRepository
 import com.allenljf.aicompanion.data.mock.MockCompanionOrderRepository
 import com.allenljf.aicompanion.data.mock.MockCompanionRepository
-import com.allenljf.aicompanion.data.mock.MockTripProductSearchRepository
 import com.allenljf.aicompanion.data.remote.CompanionApiClient
 import com.allenljf.aicompanion.data.remote.RemoteCompanionOrderRepository
 import com.allenljf.aicompanion.data.remote.RemoteCompanionRepository
@@ -36,7 +34,6 @@ import com.allenljf.aicompanion.domain.SaveLocalCompanionUseCase
 import com.allenljf.aicompanion.domain.SaveQuizHistoryUseCase
 import com.allenljf.aicompanion.domain.SaveSavedTripsUseCase
 import com.allenljf.aicompanion.domain.SaveShownQuestionCountsUseCase
-import com.allenljf.aicompanion.domain.SearchTripProductsUseCase
 import com.allenljf.aicompanion.viewmodel.AiCompanionViewModel
 import com.russhwolf.settings.Settings
 import org.koin.core.module.dsl.factoryOf
@@ -53,7 +50,6 @@ import org.koin.dsl.module
  */
 // T17 真後端接入：單一開關決定 CompanionRepository/CompanionOrderRepository 走真後端還是 mock
 // （改 false 可離線跑 demo，見 migration/API_CONTRACT.md「實際部署差異」一節）。
-// TripProductSearchRepository 永遠綁 mock——後端無對應的商品搜尋端點（見 T17 報告）。
 private const val useRemoteApi = true
 
 val appModule = module {
@@ -65,7 +61,6 @@ val appModule = module {
     single<CompanionOrderRepository> {
         if (useRemoteApi) RemoteCompanionOrderRepository(get()) else MockCompanionOrderRepository()
     }
-    single<TripProductSearchRepository> { MockTripProductSearchRepository() }
     single { LocalCompanionStore(Settings()) }
 
     // ---------- domain：26 個 UseCase ----------
@@ -95,7 +90,6 @@ val appModule = module {
     factoryOf(::SaveQuizHistoryUseCase)
     factoryOf(::SaveSavedTripsUseCase)
     factoryOf(::SaveShownQuestionCountsUseCase)
-    factoryOf(::SearchTripProductsUseCase)
 
     // ---------- viewmodel ----------
     viewModel {
@@ -118,7 +112,6 @@ val appModule = module {
             fetchRecommendCityUseCase = get(),
             fetchTravelGuideUseCase = get(),
             fetchTravelReviseUseCase = get(),
-            searchTripProductsUseCase = get(),
             getSavedTripsUseCase = get(),
             saveSavedTripsUseCase = get(),
             getUpcomingOrderMaterialsUseCase = get(),
