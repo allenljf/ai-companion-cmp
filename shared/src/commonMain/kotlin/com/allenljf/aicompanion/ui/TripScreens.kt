@@ -922,7 +922,7 @@ private fun TimelineStopCard(
  *
  * 背景：商品搜尋卡原本要打後端搜尋 API 才能顯示縮圖／評分／價格與「還有 N 項」，但沒有真後端可用——
  * KKday 內部端點（v2.1/search/product_list）依專案定案不接，三家主要 OTA（KKday/Klook/Trip.com）
- * 也都沒有公開的商品搜尋 API（見 migration/research-ota-product-apis.md）。改成 5 個固定平台的按鈕，
+ * 也都沒有公開的商品搜尋 API（見 migration/research-ota-product-apis.md）。改成 4 個固定平台的按鈕，
  * 點擊直接開各平台前台搜尋結果頁，關鍵字統一「{目的地} {景點名}」——這些 URL 格式都經過瀏覽器實測驗證。
  * 沒有預覽資料（縮圖/評分/價格/數量），這是純深連結必然的取捨。
  */
@@ -939,9 +939,6 @@ private fun TripSpotSearchLinks(destination: String, spotName: String) {
             "Klook" to "https://www.klook.com/zh-TW/search/result/?query=${keyword.encodeURLParameter()}&search_scope=main_search",
             "Trip.com" to "https://tw.trip.com/things-to-do/list?pagetype=city&keyword=${keyword.encodeURLParameter()}&pshowcode=all&kwdfrom=srch&ext-searchpage=1",
             "Agoda" to "https://www.agoda.com/zh-tw/activities/search?keyword=${keyword.encodeURLParameter()}",
-            // GetYourGuide 的 q 參數用 + 表示空白（form-urlencoded 風格），跟其他四家的 %20 不同，
-            // 兩者都是 Allen 提供的真實 URL 逐一驗證過的格式，不要對齊成同一種編碼
-            "GetYourGuide" to "https://www.getyourguide.com/zh-tw/s/?q=${keyword.encodeURLParameter(spaceToPlus = true)}&searchSource=7&src=search_bar&adults=1",
         )
     }
 

@@ -266,13 +266,15 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
   `model/TripProductSearchModels.kt`（TripProductCard/TripProductSearchResult/Request 三型別）、
   `MockData.searchCatalog`、ViewModel 的 `searchTripProduct()`/`_tripProductStates`、
   `AiCompanionStates.TripProductState`、AppModule.kt 對應 DI 綁定與建構子參數全部刪除。
-  `ui/TripScreens.kt` 的 `TripProductCard` composable 換成 `TripSpotSearchLinks`：5 顆固定按鈕
-  （KKday/Klook/Trip.com/Agoda/GetYourGuide），關鍵字統一「{目的地} {景點名}」（`trip.city` + 景點
+  `ui/TripScreens.kt` 的 `TripProductCard` composable 換成 `TripSpotSearchLinks`：4 顆固定按鈕
+  （KKday/Klook/Trip.com/Agoda），關鍵字統一「{目的地} {景點名}」（`trip.city` + 景點
   displayTitle），複用 T20 已有的 `rememberOpenUrl()` expect/actual，無新增平台特化。
-  5 個 URL 格式全部經瀏覽器實測驗證可用（含跨 Cloudflare bot 檢查頁），編碼細節：KKday/Klook/
-  Trip.com/Agoda 空白編碼成 `%20`（`encodeURLParameter()` 預設），GetYourGuide 的 `q` 參數用
-  `+`（`encodeURLParameter(spaceToPlus = true)`）——兩種編碼皆對照 Allen 提供的真實 URL 逐一核對，
-  不要對齊成同一種。**沒有商品預覽資料**（縮圖/評分/價格/數量），這是純深連結必然的取捨：只能做
+  URL 格式全部經瀏覽器實測驗證可用（含跨 Cloudflare bot 檢查頁），四家空白一律編碼成 `%20`
+  （`encodeURLParameter()` 預設）。
+  > GetYourGuide 原本也在清單內（`q` 參數用 `+` 表示空白，需 `encodeURLParameter(spaceToPlus = true)`），
+  > 2026-08-17 依 Allen 要求移除；若日後要加回，注意它的編碼跟其他四家不同。
+
+  **沒有商品預覽資料**（縮圖/評分/價格/數量），這是純深連結必然的取捨：只能做
   「點擊跳轉去對的搜尋結果」，做不到「先知道第一項是什麼」，因為那個資訊只存在後端商品資料庫，
   URL 本身不會告訴你。
 
