@@ -1396,20 +1396,31 @@ class AiCompanionViewModel(
     }
 
     /** 成果頁「儲存到我的旅程」：寫入本地清單（最新在前，同 createdAt 去重）。 */
-    fun saveActiveTrip() {
+    fun saveActiveTrip(onSuccess: () -> Unit = {}) {
         val trip = (_travelGuideState.value as? TravelGuideState.Loaded)?.trip ?: return
         viewModelScope.launch {
             val updated = (listOf(trip) + _savedTrips.value.filterNot { it.createdAt == trip.createdAt })
                 .take(SAVED_TRIPS_MAX)
-            saveSavedTripsUseCase(updated).onSuccess { _savedTrips.value = updated }
+            saveSavedTripsUseCase(updated).onSuccess {
+                _savedTrips.value = updated
+                onSuccess()
+            }
         }
     }
 
-    fun deleteSavedTrip(trip: SavedTripRecord) {
+    fun deleteSavedTrip(trip: SavedTripRecord, onSuccess: () -> Unit = {}) {
         viewModelScope.launch {
             val updated = _savedTrips.value.filterNot { it.createdAt == trip.createdAt }
-            saveSavedTripsUseCase(updated).onSuccess { _savedTrips.value = updated }
+            saveSavedTripsUseCase(updated).onSuccess {
+                _savedTrips.value = updated
+                onSuccess()
+            }
         }
+    }
+
+    fun deleteActiveTrip(onSuccess: () -> Unit = {}) {
+        val trip = (_travelGuideState.value as? TravelGuideState.Loaded)?.trip ?: return
+        deleteSavedTrip(trip, onSuccess)
     }
 
     /** 從「我的旅程」點開本地行程：直接以 Loaded 呈現成果頁（不打 API）。 */

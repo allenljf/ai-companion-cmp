@@ -47,6 +47,7 @@ import com.allenljf.aicompanion.ui.components.ButtonType
 import com.allenljf.aicompanion.ui.components.AppButton
 import com.allenljf.aicompanion.viewmodel.AiCompanionViewModel
 import com.allenljf.aicompanion.viewmodel.IntroductionState
+import com.allenljf.aicompanion.viewmodel.TravelGuideState
 import org.jetbrains.compose.resources.painterResource
 import aicompanion.shared.generated.resources.Res
 import aicompanion.shared.generated.resources.ic_arrow_left_line
@@ -234,16 +235,22 @@ fun AiCompanionRoot(
             val guideState by viewModel.travelGuideState.collectAsStateWithLifecycle()
             val reviseState by viewModel.tripReviseState.collectAsStateWithLifecycle()
             val productStates by viewModel.tripProductStates.collectAsStateWithLifecycle()
+            val savedTrips by viewModel.savedTrips.collectAsStateWithLifecycle()
+            LaunchedEffect(Unit) { viewModel.loadSavedTrips() }
             TripResultScreen(
                 state = guideState,
                 reviseState = reviseState,
                 productStates = productStates,
                 avatarUrl = creation.avatarUrl,
                 companionName = creation.companionName.ifBlank { "旅伴" }, // TODO: i18n fallback
+                isSaved = (guideState as? TravelGuideState.Loaded)?.trip?.let { activeTrip ->
+                    savedTrips.any { it.createdAt == activeTrip.createdAt }
+                } == true,
                 onClose = { step = tripReturnStep },
                 onRetry = { viewModel.retryTravelGuide() },
                 // 儲存後留在本頁（不導回首頁），可繼續編輯／請旅伴修改
-                onSave = { viewModel.saveActiveTrip() },
+                onSave = { onSuccess -> viewModel.saveActiveTrip(onSuccess) },
+                onDelete = { viewModel.deleteActiveTrip { step = tripReturnStep } },
                 onStartRevise = { dayNumber -> viewModel.startTripRevise(dayNumber) },
                 onSendRevise = { text -> viewModel.sendTripRevise(text) },
                 onRetryRevise = { viewModel.retryTripRevise() },

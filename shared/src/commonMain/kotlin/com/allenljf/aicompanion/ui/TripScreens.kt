@@ -83,11 +83,14 @@ import aicompanion.shared.generated.resources.ic_arrow_right_line
 import aicompanion.shared.generated.resources.ic_bus_line
 import aicompanion.shared.generated.resources.ic_car_line
 import aicompanion.shared.generated.resources.ic_cross_line
+import aicompanion.shared.generated.resources.ic_delete_line
+import aicompanion.shared.generated.resources.ic_heart_fill
 import aicompanion.shared.generated.resources.ic_heart_line
 import aicompanion.shared.generated.resources.ic_location_arrow_line
 import aicompanion.shared.generated.resources.ic_star_fill
 import aicompanion.shared.generated.resources.ic_train_line
 import aicompanion.shared.generated.resources.ic_walk_line
+import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
 /**
@@ -108,7 +111,7 @@ private val TRIP_REVISE_FAB_SIZE = 72.dp
  * （設計稿 TripHero，226dp）。無圖或載入失敗時退回品牌色深漸層占位。
  */
 @Composable
-private fun TripHero(trip: SavedTripRecord, onClose: () -> Unit) {
+private fun TripHero(trip: SavedTripRecord, onClose: () -> Unit, onDelete: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -137,24 +140,23 @@ private fun TripHero(trip: SavedTripRecord, onClose: () -> Unit) {
                     ),
                 ),
         )
-        Box(
+        Column(
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .statusBarsPadding()
-                .padding(top = Tokens.spacing150, end = Tokens.spacing150)
-                .size(34.dp)
-                .clip(CircleShape)
-                .background(Color.Black.copy(alpha = 0.4f))
-                .border(1.dp, Color.White.copy(alpha = 0.4f), CircleShape)
-                .clickable(onClick = onClose)
-                .testTag("companion_trip_close_btn"),
-            contentAlignment = Alignment.Center,
+                .padding(top = Tokens.spacing150, end = Tokens.spacing150),
+            verticalArrangement = Arrangement.spacedBy(Tokens.spacing100),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Icon(
+            TripHeroActionButton(
                 painter = painterResource(Res.drawable.ic_cross_line),
-                contentDescription = null,
-                tint = Tokens.colorWhite,
-                modifier = Modifier.size(Tokens.dimensionIconXs),
+                testTag = "companion_trip_close_btn",
+                onClick = onClose,
+            )
+            TripHeroActionButton(
+                painter = painterResource(Res.drawable.ic_delete_line),
+                testTag = "companion_trip_delete_btn",
+                onClick = onDelete,
             )
         }
         Column(
@@ -176,6 +178,31 @@ private fun TripHero(trip: SavedTripRecord, onClose: () -> Unit) {
                 color = Tokens.colorWhite,
             )
         }
+    }
+}
+
+@Composable
+private fun TripHeroActionButton(
+    painter: androidx.compose.ui.graphics.painter.Painter,
+    testTag: String,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .size(34.dp)
+            .clip(CircleShape)
+            .background(Color.Black.copy(alpha = 0.4f))
+            .border(1.dp, Color.White.copy(alpha = 0.4f), CircleShape)
+            .clickable(onClick = onClick)
+            .testTag(testTag),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            painter = painter,
+            contentDescription = null,
+            tint = Tokens.colorWhite,
+            modifier = Modifier.size(Tokens.dimensionIconXs),
+        )
     }
 }
 
@@ -330,7 +357,7 @@ private fun TripDayBlock(day: TravelGuideDay, onClick: () -> Unit) {
 
 /** 底部出口列：儲存到我的旅程（後端不儲存行程，儲存為 App 端本地行為；分享這期不做）。 */
 @Composable
-private fun TripBottomBar(onSave: () -> Unit) {
+private fun TripBottomBar(isSaved: Boolean, onSave: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -340,13 +367,33 @@ private fun TripBottomBar(onSave: () -> Unit) {
             .testTag("companion_trip_save_btn"),
     ) {
         AppButton(
-            buttonText = "儲存到我的旅程", // TODO: i18n
+            buttonText = if (isSaved) "已儲存到我的旅程" else "儲存到我的旅程", // TODO: i18n
             buttonType = ButtonType.PRIMARY,
             buttonState = ButtonState.ENABLED,
             buttonSizeType = ButtonSizeType.Lg,
             isFullWidth = true,
-            leadingIcon = painterResource(Res.drawable.ic_heart_line),
+            leadingIcon = painterResource(
+                if (isSaved) Res.drawable.ic_heart_fill else Res.drawable.ic_heart_line,
+            ),
             onClick = onSave,
+        )
+    }
+}
+
+@Composable
+private fun SaveSuccessToast(visible: Boolean) {
+    if (!visible) return
+    Box(
+        modifier = Modifier
+            .background(Color.Black.copy(alpha = 0.78f), RoundedCornerShape(999.dp))
+            .padding(horizontal = Tokens.spacing150, vertical = Tokens.spacing100)
+            .testTag("companion_trip_save_toast"),
+    ) {
+        Text(
+            "已儲存到我的旅程", // TODO: i18n
+            fontSize = Tokens.fontSize2,
+            fontWeight = FontWeight(Tokens.fontWeightMediumAndroid),
+            color = Tokens.colorWhite,
         )
     }
 }
@@ -411,9 +458,11 @@ internal fun TripResultScreen(
     productStates: Map<String, TripProductState> = emptyMap(),
     avatarUrl: String,
     companionName: String,
+    isSaved: Boolean,
     onClose: () -> Unit,
     onRetry: () -> Unit,
-    onSave: () -> Unit,
+    onSave: (onSuccess: () -> Unit) -> Unit,
+    onDelete: () -> Unit,
     onStartRevise: (Int) -> Unit,
     onSendRevise: (String) -> Unit,
     onRetryRevise: () -> Unit,
@@ -434,9 +483,11 @@ internal fun TripResultScreen(
                 productStates = productStates,
                 avatarUrl = avatarUrl,
                 companionName = companionName,
+                isSaved = isSaved,
                 firstMessage = state.messages.firstOrNull().orEmpty(),
                 onClose = onClose,
                 onSave = onSave,
+                onDelete = onDelete,
                 onStartRevise = onStartRevise,
                 onSendRevise = onSendRevise,
                 onRetryRevise = onRetryRevise,
@@ -463,9 +514,11 @@ private fun TripLoadedContent(
     productStates: Map<String, TripProductState>,
     avatarUrl: String,
     companionName: String,
+    isSaved: Boolean,
     firstMessage: String,
     onClose: () -> Unit,
-    onSave: () -> Unit,
+    onSave: (onSuccess: () -> Unit) -> Unit,
+    onDelete: () -> Unit,
     onStartRevise: (Int) -> Unit,
     onSendRevise: (String) -> Unit,
     onRetryRevise: () -> Unit,
@@ -490,6 +543,13 @@ private fun TripLoadedContent(
     // FAB 拖曳位置：跨天共用同一顆（不以 day 為 key），切換 Day 分頁位置保留；離開頁面才重置
     var fabDragOffset by remember { mutableStateOf(Offset.Zero) }
     var contentSize by remember { mutableStateOf(IntSize.Zero) }
+    var showSaveToast by remember { mutableStateOf(false) }
+    LaunchedEffect(showSaveToast) {
+        if (showSaveToast) {
+            delay(2_500)
+            showSaveToast = false
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -498,7 +558,7 @@ private fun TripLoadedContent(
     ) {
     Column(modifier = Modifier.fillMaxSize()) {
         LazyColumn(modifier = Modifier.weight(1f)) {
-            item(key = "hero") { TripHero(trip = trip, onClose = onClose) }
+            item(key = "hero") { TripHero(trip = trip, onClose = onClose, onDelete = onDelete) }
             item(key = "tabs") { TripDayTabs(tabs = tabs, selected = tab, onSelect = { tab = it }) }
 
             if (tab == 0) {
@@ -631,7 +691,12 @@ private fun TripLoadedContent(
             }
             item(key = "bottom_spacer") { Spacer(Modifier.height(Tokens.spacing300)) }
         }
-        TripBottomBar(onSave = onSave)
+        TripBottomBar(
+            isSaved = isSaved,
+            onSave = {
+                onSave { showSaveToast = true }
+            },
+        )
     }
 
     // 「請旅伴幫我改」FAB：旅伴頭像圓鈕（72dp，與測驗頁 QuizBuddy 同尺寸），蓋在所有天數內容之上的**單一共用實例**
@@ -672,6 +737,13 @@ private fun TripLoadedContent(
                 )
             },
         )
+    }
+    Box(
+        modifier = Modifier
+            .align(Alignment.BottomCenter)
+            .padding(bottom = 96.dp),
+    ) {
+        SaveSuccessToast(visible = showSaveToast)
     }
     }
 

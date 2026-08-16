@@ -258,6 +258,7 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 
 ## 決策補充紀錄
 
+- 行程成果頁儲存／刪除操作（2026-08-16）：儲存成功後底部按鈕的 `ic_heart_line` 改為新增的 `ic_heart_fill`，並顯示 2.5 秒「已儲存到我的旅程」commonMain toast；提示與狀態都只在 `saveSavedTrips` 成功後更新。hero 右上關閉鈕下新增同樣半透明樣式的 `ic_delete_line` 刪除鈕，刪除本地記錄成功後依 `tripReturnStep` 返回來源頁面。
 - T21 打字機揭曉頁（2026-08-16）：恢復原版 `PosterGeneratingContent`/`TypewriterText`/`SequentialTypewriterItems`/
   `ReasoningBubble`/`BreathingLoadingText`/`PosterReadyBanner` 六個 composable（逐行照搬換葉節點），加回
   ViewModel 的 `posterRevealed`/`revealPosterResult()`。分析成功後先進打字機等待頁（不自動跳結果頁），
@@ -269,11 +270,9 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
   只有 `stampFallbackCategory` 有 UI 用途（`PosterFallbackAssets.stampDrawable()`，`stamp_url` 缺圖時退本地 icon）。
   Fallback icon 8 顆（1 stamp + 7 tag，tag 系列雖不用但保留供未來 tag icon 恢復時使用）從原 Android 專案
   複製進 composeResources；hero fallback 6 顆先不搬（hero 缺圖走無海報 fallback 版面，不需要類別 icon）。
-- **待決策（下個對話請向 Allen 確認）**：T21 實作過程中（一個中途被使用者停掉的 agent）順手改了兩處跟
-  T21 無關的地方，尚未決定去留：
-  1. `ui/TripScreens.kt`：拖曳 FAB 尺寸 100dp→72dp（改成與測驗頁頭像同尺寸）
-  2. `ui/CompanionRootScreen.kt`：行程成果頁關閉鈕的返回目的地，`PlanChat`→`Home`
-  這兩處已隨 T21 commit 一起進倉庫，如果要 revert，看這兩個檔案在 commit 前一版的差異即可。
+- T21 非範圍 UI 調整確認（2026-08-16）：使用者確認保留兩項既有變更：
+  1. `ui/TripScreens.kt`：拖曳 FAB 尺寸維持 72dp（與測驗頁旅伴頭像同尺寸）
+  2. `ui/CompanionRootScreen.kt`：從 `PlanChat` 開啟的行程成果頁，關閉鈕返回 `Home`，不回聊天室
 
 - T19 海報接回（2026-08-16，**部分推翻決策 1／6**）：後端 `share-image-v2` 已能產圖並回 `hero_url`，因此接回「顯示海報」。與原版關鍵差異：**後端同步一次回完（實測首次約 80 秒、同 uuid 重打約 35 秒，未快取），不是原版的 pending＋輪詢**，因此 app 端不做輪詢、不做 Bitmap 合成、不下載存檔（`poster/` 7 檔仍不移植）。ViewModel 只加簡化版 `ShareImageV2State`（Idle/Loading/Ready/Failed）與一個背景 coroutine：分析成功當下即觸發，結果頁文字先顯示、圖 ready 再補上；失敗只影響海報區塊（軟失敗契約）。Ktor 這支需**同時**放寬 `requestTimeoutMillis` 與 `socketTimeoutMillis`——產圖那 80 秒 socket 上無資料往來，只放寬前者會被預設 socket 逾時打斷。產圖成功回填 `QuizHistoryRecord.heroImageUrl`，回顧頁不必重打。`decorations`（stamp/tag icon 疊圖素材）未使用
 
