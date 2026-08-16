@@ -193,7 +193,7 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 
 - [x] Ktor client 依實際部署的 15 支端點實作（`share-image-v2` 不接、商品搜尋無端點續用 mock）
 - [x] DI 綁定 mock→remote 用一個 flag 切換（`useRemoteApi`，保留 mock 供離線 demo）
-- [ ] 雙平台實跑 + Commit（留給 controller；本 task 已完成 JVM 端 15 支端點真連線 decode 驗證，見 task-T17-report.md）
+- [x] 雙平台實跑 + Commit：Android emulator 真 API 全流程通過（ai-partner 11 個性選項、真題庫 1/8、quiz-completions「獨處療癒師×東京」、travel-summary 銜接測驗結果、travel-guide 4 天東京行程、travel-revise 語意移除 Nonbei Yokocho）；iOS Simulator（Darwin engine）建置＋啟動＋真題庫載入通過（2026-08-15）
 
 ---
 
@@ -240,6 +240,9 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 - ~~[Minor/T10] TripListScreen.formatSavedAtDate 以 UTC 日界切分日期（原版用裝置時區），Taipei 使用者每日 00:00–08:00 存的行程日期會少一天。~~ 已修：final review 時抽成共用 helper `CompanionRootScreen.formatEpochMillisAsDate`，epoch 先加 8 小時（台北時區近似值），標 `// TODO: timezone` 待日後接精確時區換算
 - 全專案無自動化測試，品質依賴手動雙平台實跑（`:androidApp:assembleDebug` + `:shared:compileKotlinIosSimulatorArm64`）
 - [Minor/iOS] 結果頁頂部標題會被 Dynamic Island 遮住（hero 區 safe area 未處理），Android 不受影響——低優先待修
+- [Minor/後端] LLM 回應偶爾簡繁混雜（travel-summary 開場訊息出現簡體）——後端 prompt 的 locale 約束問題，app 端無關
+- [Minor/預期] 商品推薦卡固定顯示 mock 目錄（大阪環球影城等）與真實行程城市可能不匹配——商品搜尋無後端端點，待後端補端點後接真資料
+- [備註] 後端 LLM 偶發 429（Groq rate limit）→ 走軟失敗兜底文案，屬預期行為
 
 ## 決策補充紀錄
 
