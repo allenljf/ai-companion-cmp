@@ -258,6 +258,7 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 
 ## 決策補充紀錄
 
+- 旅行 DNA 回顧詳情一致化（2026-08-17）：歷史詳情改用與答題完成結果頁相同的沈浸式 hero（含目的地／tagline／stamp 資訊卡），已回填的 hero URL 直接顯示，缺圖仍保留相同比例的品牌色 fallback；右上新增 X 回到回顧列表。更多動作統一為繼續規劃、文字／IG 分享、看其他人、回到旅伴，歷史紀錄的「繼續規劃」以該筆 `QuizCompletionResult` 開啟規劃；移除全域更多動作選單的「搜尋相關產品」列與 KKday 搜尋 deeplink。
 - 結果頁分享文案／揭曉按鈕微調（2026-08-17）：所有 `social_post` 顯示、複製與系統分享入口在 UI 層統一移除不分大小寫的 `#KKday` hashtag；打字機揭曉頁 `PosterReadyBanner` 的右箭頭改為主色 `colorBackgroundPrimaryMedium`，提高淺色圓形底上的辨識度。
 - 行程成果頁儲存／刪除操作（2026-08-16）：儲存成功後底部按鈕的 `ic_heart_line` 改為新增的 `ic_heart_fill`，並顯示 2.5 秒「已儲存到我的旅程」commonMain toast；提示與狀態都只在 `saveSavedTrips` 成功後更新。hero 右上關閉鈕下新增同樣半透明樣式的 `ic_delete_line` 刪除鈕，刪除本地記錄成功後依 `tripReturnStep` 返回來源頁面。
 - T21 打字機揭曉頁（2026-08-16）：恢復原版 `PosterGeneratingContent`/`TypewriterText`/`SequentialTypewriterItems`/

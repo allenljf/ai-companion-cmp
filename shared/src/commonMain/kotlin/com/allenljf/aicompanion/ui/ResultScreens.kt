@@ -70,36 +70,25 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.allenljf.aicompanion.model.QuizCompletionResult
 import com.allenljf.aicompanion.model.QuizHistoryRecord
-import com.allenljf.aicompanion.model.ShareImageV2Content
-import com.allenljf.aicompanion.platform.rememberOpenUrl
 import com.allenljf.aicompanion.platform.rememberShareImageToInstagramStory
 import com.allenljf.aicompanion.platform.rememberShareText
 import com.allenljf.aicompanion.theme.Tokens
 import com.allenljf.aicompanion.ui.components.AppButton
-import com.allenljf.aicompanion.ui.components.AppDialog
 import com.allenljf.aicompanion.ui.components.ButtonSizeType
 import com.allenljf.aicompanion.ui.components.ButtonState
 import com.allenljf.aicompanion.ui.components.ButtonType
-import com.allenljf.aicompanion.ui.components.DialogHeaderType
 import com.allenljf.aicompanion.ui.components.DragHandle
 import com.allenljf.aicompanion.viewmodel.AiCompanionViewModel
 import com.allenljf.aicompanion.viewmodel.AnalysisState
 import com.allenljf.aicompanion.viewmodel.CompanionCreationState
 import com.allenljf.aicompanion.viewmodel.ShareImageV2State
-import io.ktor.http.encodeURLParameter
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import aicompanion.shared.generated.resources.Res
 import aicompanion.shared.generated.resources.companion_stamp_fallback_generic
-import aicompanion.shared.generated.resources.companion_tag_fallback_adventure
-import aicompanion.shared.generated.resources.companion_tag_fallback_culture
-import aicompanion.shared.generated.resources.companion_tag_fallback_food
-import aicompanion.shared.generated.resources.companion_tag_fallback_generic
-import aicompanion.shared.generated.resources.companion_tag_fallback_nightlife
-import aicompanion.shared.generated.resources.companion_tag_fallback_relaxation
-import aicompanion.shared.generated.resources.companion_tag_fallback_shopping
 import aicompanion.shared.generated.resources.ic_arrow_right_line
+import aicompanion.shared.generated.resources.ic_cross_line
 import aicompanion.shared.generated.resources.ic_copy_line
 import aicompanion.shared.generated.resources.ic_delete_line
 import aicompanion.shared.generated.resources.ic_globe_fill
@@ -108,7 +97,6 @@ import aicompanion.shared.generated.resources.ic_map_location_line
 import aicompanion.shared.generated.resources.ic_message_line
 import aicompanion.shared.generated.resources.ic_note_line
 import aicompanion.shared.generated.resources.ic_people_line
-import aicompanion.shared.generated.resources.ic_road_map_line
 import aicompanion.shared.generated.resources.ic_share_android_line
 
 // ---------- 結果頁（C-1 統一畫面；海報產圖/分享圖鏈路整段不搬，見 migration/02-ledger.md）----------
@@ -144,7 +132,6 @@ internal fun ResultScreen(
     var showBottomSheet by remember { mutableStateOf(false) }
     val shareText = rememberShareText()
     val shareImageToInstagramStory = rememberShareImageToInstagramStory()
-    val openUrl = rememberOpenUrl()
     val clipboardManager = LocalClipboardManager.current
     val scope = rememberCoroutineScope()
     // 分享／分享到 IG 限時動態用：截「Hero + 黑色資訊卡」容器當下畫面的截圖，而非重新下載 hero URL，
@@ -231,7 +218,9 @@ internal fun ResultScreen(
                         ) {
                             ImmersiveShareHeroWithBadge(
                                 heroUrl = shareResult.heroUrl.orEmpty(),
-                                content = shareResult.content,
+                                destinationCn = shareResult.content.destinationCn,
+                                destinationEn = shareResult.content.destinationEn,
+                                tagline = shareResult.content.tagline,
                                 stampUrl = shareResult.stampUrl,
                             )
                         }
@@ -317,7 +306,7 @@ internal fun ResultScreen(
             }
         }
 
-        // BottomSheet：繼續規劃／分享我的旅行 DNA／分享到 IG 限時動態／搜尋相關產品／看其他人／回到旅伴
+        // BottomSheet：繼續規劃／分享我的旅行 DNA／分享到 IG 限時動態／看其他人／回到旅伴
         // （新排序見任務規格第 5 點；查看完整測驗結果/下載圖片列沿用既有定案不顯示）
         if (showBottomSheet) {
             ResultActionsBottomSheet(
@@ -359,10 +348,6 @@ internal fun ResultScreen(
                         shareText(shareCaption)
                     }
                 },
-                onSearchProducts = {
-                    showBottomSheet = false
-                    openUrl(kkdayDestinationSearchUrl(result?.destinationCn.orEmpty()))
-                },
                 onViewOthers = {
                     showBottomSheet = false
                     onViewOthers()
@@ -371,10 +356,6 @@ internal fun ResultScreen(
         }
     }
 }
-
-/** 「搜尋相關產品」深連結（migration/research-ota-product-apis.md 定調的「真深連結」做法，不接 App 內搜尋結果頁）。 */
-private fun kkdayDestinationSearchUrl(keyword: String): String =
-    "https://www.kkday.com/zh-tw/search?keyword=${keyword.encodeURLParameter()}"
 
 /**
  * 海報 hero 圖（hero 尚未就緒時的 fallback 版面用）：Loading 顯示輕量佔位（不是 shimmer，demo 未移植
@@ -424,7 +405,9 @@ private const val HERO_ASPECT_RATIO = 9f / 16f
 @Composable
 private fun ImmersiveShareHeroWithBadge(
     heroUrl: String,
-    content: ShareImageV2Content,
+    destinationCn: String,
+    destinationEn: String,
+    tagline: String,
     stampUrl: String?,
 ) {
     Box(modifier = Modifier.fillMaxWidth()) {
@@ -432,6 +415,7 @@ private fun ImmersiveShareHeroWithBadge(
             url = heroUrl,
             modifier = Modifier
                 .fillMaxWidth()
+                .background(Tokens.colorBackgroundPrimaryLighter)
                 .testTag("companion_result_hero_image"),
             placeholderAspectRatio = HERO_ASPECT_RATIO,
             blurInOnLoad = true,
@@ -447,16 +431,16 @@ private fun ImmersiveShareHeroWithBadge(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    listOf(content.destinationCn, content.destinationEn).filter { it.isNotBlank() }.joinToString(" · "),
+                    listOf(destinationCn, destinationEn).filter { it.isNotBlank() }.joinToString(" · "),
                     color = Color.White,
                     fontWeight = FontWeight(Tokens.fontWeightBold),
                     fontSize = Tokens.fontSize5,
                     modifier = Modifier.testTag("companion_result_hero_destination"),
                 )
-                if (content.tagline.isNotBlank()) {
+                if (tagline.isNotBlank()) {
                     Spacer(Modifier.height(Tokens.spacing050))
                     Text(
-                        content.tagline,
+                        tagline,
                         color = Color.White.copy(alpha = 0.85f),
                         fontSize = Tokens.fontSize2,
                     )
@@ -1087,8 +1071,8 @@ internal fun CompanionResultDetailsContent(
 
 /**
  * 導覽選單 bottom sheet（T20 恢復完整版）：繼續規劃／分享我的旅行 DNA／分享到 IG 限時動態／
- * 搜尋相關產品（任務規格第 5 點新增前 4 項排序）＋既有的看其他人／查看完整測驗結果／回到旅伴／
- * 回到回顧列表／刪除紀錄（相對順序不變，見任務 brief）。「下載到我的裝置」原始碼依附海報 bitmap
+ * 看其他人／查看完整測驗結果／回到旅伴／回到回顧列表／刪除紀錄（相對順序不變，見任務 brief）。
+ * 「下載到我的裝置」原始碼依附海報 bitmap
  * 且本專案不落地存檔，維持不做。
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1103,7 +1087,6 @@ private fun ResultActionsBottomSheet(
     onContinuePlanning: (() -> Unit)? = null,
     onShareDna: (() -> Unit)? = null,
     onShareToInstagramStories: (() -> Unit)? = null,
-    onSearchProducts: (() -> Unit)? = null,
     onViewOthers: (() -> Unit)? = null,
     onBackToList: (() -> Unit)? = null,
     onDeleteRecord: (() -> Unit)? = null,
@@ -1154,17 +1137,6 @@ private fun ResultActionsBottomSheet(
                         description = "一鍵貼到限動", // TODO: i18n
                         testTag = "companion_action_share_ig_stories",
                         onClick = onShareToInstagramStories,
-                    )
-                }
-            }
-            if (onSearchProducts != null) {
-                add {
-                    ActionRow(
-                        icon = painterResource(Res.drawable.ic_road_map_line),
-                        title = "搜尋相關產品", // TODO: i18n
-                        description = "到 KKday 逛逛這裡的行程與票券", // TODO: i18n
-                        testTag = "companion_action_search_products",
-                        onClick = onSearchProducts,
                     )
                 }
             }
@@ -1531,6 +1503,9 @@ internal fun TitledInfoCard(
 internal fun CompanionHistoryScreen(
     viewModel: AiCompanionViewModel,
     onBack: () -> Unit,
+    onGoHome: () -> Unit,
+    onViewOthers: () -> Unit,
+    onStartPlanning: (QuizCompletionResult) -> Unit,
 ) {
     val history by viewModel.quizHistory.collectAsStateWithLifecycle()
     var selectedCreatedAt by remember { mutableStateOf<Long?>(null) }
@@ -1538,13 +1513,14 @@ internal fun CompanionHistoryScreen(
     val current = history.firstOrNull { it.createdAt == selectedCreatedAt }
     if (current != null) {
         CompanionHistoryDetailContent(
-            viewModel = viewModel,
             record = current,
             onBack = {
                 viewModel.loadQuizHistory()
                 selectedCreatedAt = null
             },
-            onDeleted = { selectedCreatedAt = null },
+            onGoHome = onGoHome,
+            onViewOthers = onViewOthers,
+            onStartPlanning = { onStartPlanning(current.result) },
         )
     } else {
         ScreenScaffold(
@@ -1647,20 +1623,27 @@ private fun CompanionHistoryItem(
 }
 
 /**
- * 單筆歷史詳情：原始碼從本機檔案重組海報 Hero 供檢視/分享，海報鏈路不做後
- * 一律走原本「素材缺漏」的 fallback 排版（命定城市文字佔位 + 人格標籤 + 推薦理由/分享文案卡片）。
+ * 單筆歷史詳情：使用已回填的遠端 hero，沿用結果頁的沈浸式海報與更多動作。
  */
 @Composable
 private fun CompanionHistoryDetailContent(
-    viewModel: AiCompanionViewModel,
     record: QuizHistoryRecord,
     onBack: () -> Unit,
-    onDeleted: () -> Unit,
+    onGoHome: () -> Unit,
+    onViewOthers: () -> Unit,
+    onStartPlanning: () -> Unit,
 ) {
     var showBottomSheet by remember { mutableStateOf(false) }
-    var showDeleteConfirm by remember { mutableStateOf(false) }
     val density = LocalDensity.current
     var bottomBarHeight by remember { mutableStateOf(0.dp) }
+    val shareText = rememberShareText()
+    val shareImageToInstagramStory = rememberShareImageToInstagramStory()
+    val clipboardManager = LocalClipboardManager.current
+    val scope = rememberCoroutineScope()
+    val shareableGraphicsLayer = rememberGraphicsLayer()
+    val shareCaption = withoutKkdayHashtag(record.result.socialPost).ifBlank {
+        "我的旅行人格是${record.result.travelIdentity}，命定城市是${record.result.destinationCn}！" // TODO: i18n
+    }
 
     Box(
         modifier = Modifier
@@ -1671,40 +1654,32 @@ private fun CompanionHistoryDetailContent(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(top = Tokens.spacing600),
+                .verticalScroll(rememberScrollState()),
         ) {
-            // T19：heroImageUrl 有值（產圖成功回填過）就直接顯示，不必重打一次 35 秒的 share-image-v2
-            if (record.heroImageUrl.isNotBlank()) {
-                CompanionAsyncImage(
-                    url = record.heroImageUrl,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = Tokens.spacing300)
-                        .clip(RoundedCornerShape(Tokens.radiusLg))
-                        .testTag("companion_history_hero_image"),
-                    // 同結果頁：hero 是 9:16 直式，固定高度會把圖裁成一條
-                    placeholderAspectRatio = HERO_ASPECT_RATIO,
-                )
-            } else {
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+            ) {
                 Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = Tokens.spacing300)
-                        .height(200.dp)
-                        .clip(RoundedCornerShape(Tokens.radiusLg))
-                        .background(Tokens.colorBackgroundPrimaryLighter)
-                        .testTag("companion_history_poster_fallback"),
-                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.drawWithContent {
+                        shareableGraphicsLayer.record { this@drawWithContent.drawContent() }
+                        drawLayer(shareableGraphicsLayer)
+                    },
                 ) {
-                    Text(
-                        "${record.result.destinationCn} · ${record.result.destinationCountry}",
-                        color = Tokens.colorTextDark,
-                        fontSize = Tokens.fontSize2,
+                    ImmersiveShareHeroWithBadge(
+                        heroUrl = record.heroImageUrl,
+                        destinationCn = record.result.destinationCn,
+                        destinationEn = record.result.destinationEn,
+                        tagline = record.result.tagline,
+                        stampUrl = null,
                     )
                 }
+                HistoryDetailCloseButton(
+                    modifier = Modifier.align(Alignment.TopEnd),
+                    onClick = onBack,
+                )
             }
-            CompanionResultHighlightContent(record.result, showDestinationAndTagline = true)
+            Spacer(Modifier.height(Tokens.spacing200))
+            CompanionResultHighlightContent(record.result, showDestinationAndTagline = false)
             CompanionResultDetailsContent(result = record.result, bottomSafeArea = bottomBarHeight)
         }
 
@@ -1720,11 +1695,16 @@ private fun CompanionHistoryDetailContent(
                 .navigationBarsPadding()
                 .padding(horizontal = Tokens.spacing300, vertical = Tokens.spacing200),
         ) {
-            PrimaryButton(
-                text = "更多動作", // TODO: i18n
-                testTag = "companion_history_more_actions_btn",
-                onClick = { showBottomSheet = true },
-            )
+            Box(Modifier.testTag("companion_history_more_actions_btn")) {
+                AppButton(
+                    buttonText = "更多動作", // TODO: i18n
+                    buttonType = ButtonType.PRIMARY,
+                    buttonState = ButtonState.ENABLED,
+                    buttonSizeType = ButtonSizeType.Lg,
+                    isFullWidth = true,
+                    onClick = { showBottomSheet = true },
+                )
+            }
         }
     }
 
@@ -1733,61 +1713,55 @@ private fun CompanionHistoryDetailContent(
             result = record.result,
             onDismiss = { showBottomSheet = false },
             onViewDetail = {},
-            onGoHome = {},
-            showViewDetail = false,
-            showGoHome = false,
-            onBackToList = {
+            onGoHome = {
                 showBottomSheet = false
-                onBack()
+                onGoHome()
             },
-            onDeleteRecord = {
+            showViewDetail = false,
+            onContinuePlanning = {
                 showBottomSheet = false
-                showDeleteConfirm = true
+                onStartPlanning()
+            },
+            onShareDna = {
+                showBottomSheet = false
+                shareText(shareCaption)
+            },
+            onShareToInstagramStories = {
+                showBottomSheet = false
+                if (shareCaption.isNotBlank()) clipboardManager.setText(AnnotatedString(shareCaption))
+                scope.launch {
+                    val bitmap = shareableGraphicsLayer.toImageBitmap()
+                    val shared = shareImageToInstagramStory(bitmap, shareCaption)
+                    if (!shared) shareText(shareCaption)
+                }
+            },
+            onViewOthers = {
+                showBottomSheet = false
+                onViewOthers()
             },
         )
     }
+}
 
-    if (showDeleteConfirm) {
-        AppDialog(
-            headerType = DialogHeaderType.Text(title = "刪除這筆紀錄？", useScrollableContent = false), // TODO: i18n
-            showHeaderCloseButton = false,
-            showFooterShadow = false,
-            onDismissRequest = { showDeleteConfirm = false },
-            content = {
-                Text(
-                    "刪除後無法復原", // TODO: i18n
-                    color = Tokens.colorTextMedium,
-                    fontSize = Tokens.fontSize3,
-                    modifier = Modifier.padding(
-                        horizontal = Tokens.spacing300,
-                        vertical = Tokens.spacing150,
-                    ),
-                )
-            },
-            onClickPrimaryButton = {
-                AppButton(
-                    buttonText = "刪除", // TODO: i18n
-                    buttonType = ButtonType.PRIMARY,
-                    buttonState = ButtonState.ENABLED,
-                    buttonSizeType = ButtonSizeType.Lg,
-                    isFullWidth = true,
-                    onClick = {
-                        showDeleteConfirm = false
-                        viewModel.deleteQuizHistoryRecord(record.createdAt)
-                        onDeleted()
-                    },
-                )
-            },
-            onClickCancelButton = {
-                AppButton(
-                    buttonText = "取消", // TODO: i18n
-                    buttonType = ButtonType.TEXT_SECONDARY,
-                    buttonState = ButtonState.ENABLED,
-                    buttonSizeType = ButtonSizeType.Lg,
-                    isFullWidth = true,
-                    onClick = { showDeleteConfirm = false },
-                )
-            },
+@Composable
+private fun HistoryDetailCloseButton(modifier: Modifier, onClick: () -> Unit) {
+    Box(
+        modifier = modifier
+            .statusBarsPadding()
+            .padding(top = Tokens.spacing150, end = Tokens.spacing150)
+            .size(34.dp)
+            .clip(CircleShape)
+            .background(Color.Black.copy(alpha = 0.4f))
+            .border(1.dp, Color.White.copy(alpha = 0.4f), CircleShape)
+            .clickable(onClick = onClick)
+            .testTag("companion_history_detail_close_btn"),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            painter = painterResource(Res.drawable.ic_cross_line),
+            contentDescription = null,
+            tint = Tokens.colorWhite,
+            modifier = Modifier.size(Tokens.dimensionIconXs),
         )
     }
 }

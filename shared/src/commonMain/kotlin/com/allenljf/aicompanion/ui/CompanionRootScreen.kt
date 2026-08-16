@@ -279,6 +279,16 @@ fun AiCompanionRoot(
             CompanionHistoryScreen(
                 viewModel = viewModel,
                 onBack = { step = AiCompanionStep.Home },
+                onGoHome = { step = AiCompanionStep.Home },
+                onViewOthers = {
+                    quizGalleryReturnStep = AiCompanionStep.History
+                    step = AiCompanionStep.QuizGallery
+                },
+                onStartPlanning = { result ->
+                    viewModel.startPlanFromQuizHistory(result)
+                    tripReturnStep = AiCompanionStep.PlanChat
+                    step = AiCompanionStep.PlanChat
+                },
             )
         }
 

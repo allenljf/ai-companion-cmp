@@ -610,6 +610,15 @@ class AiCompanionViewModel(
     /** 入口 A：測驗結果頁「繼續規劃」。intro_text 以本輪分析結果組成（App 已持有，後端不回查快取）。 */
     fun startPlanFromQuizResult() {
         val result = (_analysisState.value as? AnalysisState.Success)?.result ?: return
+        startPlanFromQuizCompletion(result)
+    }
+
+    /** 回顧中的 DNA 紀錄沿用與當前測驗結果相同的行程規劃入口。 */
+    fun startPlanFromQuizHistory(result: QuizCompletionResult) {
+        startPlanFromQuizCompletion(result)
+    }
+
+    private fun startPlanFromQuizCompletion(result: QuizCompletionResult) {
         val destination = if (isChineseLanguageUseCase()) result.destinationCn else result.destinationEn
         val introText = buildString {
             append("你是${result.travelIdentity}，命定城市是${destination}。")
