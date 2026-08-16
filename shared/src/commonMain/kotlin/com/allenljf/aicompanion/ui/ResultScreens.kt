@@ -10,6 +10,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -268,6 +269,10 @@ internal fun ResultScreen(
 /**
  * 海報 hero 圖（T19）：Loading 顯示輕量佔位（不是 shimmer，demo 未移植那套元件，見
  * CompanionRootScreen 對 CompanionAsyncImage 的說明）；Failed/Idle 不佔版面直接跳過。
+ *
+ * 比例固定 [HERO_ASPECT_RATIO]：後端 hero 是 IG 限動規格的直式長圖（實測 1536x2752／1152x2048），
+ * 用固定高度的橫幅框會 centerCrop 只露出中間一條（原版 SixZonePosterSpec 也特別註明 hero 要完整
+ * 顯示不裁切）。Loading 佔位用同一比例，圖載入後版面才不會跳動。
  */
 @Composable
 private fun ShareImageV2HeroContent(state: ShareImageV2State) {
@@ -277,7 +282,7 @@ private fun ShareImageV2HeroContent(state: ShareImageV2State) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = Tokens.spacing300)
-                    .height(220.dp)
+                    .aspectRatio(HERO_ASPECT_RATIO)
                     .clip(RoundedCornerShape(Tokens.radiusLg))
                     .background(Tokens.colorBackgroundPrimaryLighter)
                     .testTag("companion_result_hero_loading"),
@@ -293,9 +298,9 @@ private fun ShareImageV2HeroContent(state: ShareImageV2State) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = Tokens.spacing300)
-                    .height(220.dp)
                     .clip(RoundedCornerShape(Tokens.radiusLg))
                     .testTag("companion_result_hero_image"),
+                placeholderAspectRatio = HERO_ASPECT_RATIO,
                 blurInOnLoad = true,
             )
         }
@@ -303,6 +308,9 @@ private fun ShareImageV2HeroContent(state: ShareImageV2State) {
         ShareImageV2State.Idle, ShareImageV2State.Failed -> Unit
     }
 }
+
+/** 後端 hero 圖是 9:16 直式（IG 限動規格） */
+private const val HERO_ASPECT_RATIO = 9f / 16f
 
 /**
  * 統一的旅伴讀取畫面：頭像 + 名字 + 主標題 + 副標題 + 三點漸變輪播。
@@ -1071,9 +1079,10 @@ private fun CompanionHistoryDetailContent(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = Tokens.spacing300)
-                        .height(200.dp)
                         .clip(RoundedCornerShape(Tokens.radiusLg))
                         .testTag("companion_history_hero_image"),
+                    // 同結果頁：hero 是 9:16 直式，固定高度會把圖裁成一條
+                    placeholderAspectRatio = HERO_ASPECT_RATIO,
                 )
             } else {
                 Box(
