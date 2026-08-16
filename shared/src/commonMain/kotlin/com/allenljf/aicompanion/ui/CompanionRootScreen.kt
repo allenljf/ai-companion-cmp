@@ -222,7 +222,8 @@ fun AiCompanionRoot(
                 onSubmitPreferences = { viewModel.submitPreferences() },
                 onRetryGuide = { viewModel.retryTravelGuide() },
                 onViewTrip = {
-                    tripReturnStep = AiCompanionStep.PlanChat
+                    // 行程排完就結束規劃：成果頁關閉鈕回旅伴主頁，不回聊天室（那段對話已無事可做）
+                    tripReturnStep = AiCompanionStep.Home
                     step = AiCompanionStep.TripResult
                 },
             )

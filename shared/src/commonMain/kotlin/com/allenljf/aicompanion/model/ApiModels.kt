@@ -554,8 +554,9 @@ data class QuizGalleryItemResponse(
 
 // ---------- POST /companion/share-image-v2 ----------
 // T19：後端已產好合成圖，App 只顯示 hero_url，不做 Bitmap 疊字/輪詢（見 migration/01-decisions.md #6 後續變更）。
-// T20：結果頁改回沈浸式完整版面（hero + 黑色資訊卡 + tag 圓圖），需要 content/decorations 補齊顯示欄位；
-// hero_fallback_category/share_fallback 仍不宣告——ignoreUnknownKeys=true 自動忽略，這兩者目前沒有對應 UI 需求。
+// T20：結果頁改回沈浸式完整版面（hero + 黑色資訊卡 + tag 圓圖），需要 content/decorations 補齊顯示欄位。
+// T21：補回 *_fallback_category 三欄位——tag/stamp 缺圖時 UI 需要類別字串查表換內建 icon（見 PosterFallbackAssets）；
+// hero_fallback_category 目前仍無 UI 用途（hero 缺圖直接走無海報版面），先隨 DTO 帶上不用，避免之後又要補一次。
 
 @Serializable
 data class ShareImageV2Request(
@@ -569,6 +570,7 @@ data class ShareImageV2DataResponse(
     // 實測恆為同步回 "ready"（見 scratchpad/sdd/share-image-v2-response.json），不需輪詢
     @SerialName("status") val status: String = "",
     @SerialName("hero_url") val heroUrl: String? = null,
+    @SerialName("hero_fallback_category") val heroFallbackCategory: String = "",
     @SerialName("content") val content: ShareImageV2ContentResponse = ShareImageV2ContentResponse(),
     @SerialName("decorations") val decorations: ShareImageV2DecorationsResponse = ShareImageV2DecorationsResponse(),
     @SerialName("fail_reason") val failReason: String? = null
@@ -589,6 +591,8 @@ data class ShareImageV2ContentResponse(
 @Serializable
 data class ShareImageV2DecorationsResponse(
     @SerialName("stamp_url") val stampUrl: String? = null,
+    @SerialName("stamp_fallback_category") val stampFallbackCategory: String = "",
     // 個別 tag icon 可能因素材缺漏回 null（見 tag_fallback_categories），mapping 時濾掉
-    @SerialName("tag_icon_urls") val tagIconUrls: List<String?> = emptyList()
+    @SerialName("tag_icon_urls") val tagIconUrls: List<String?> = emptyList(),
+    @SerialName("tag_fallback_categories") val tagFallbackCategories: List<String> = emptyList()
 )

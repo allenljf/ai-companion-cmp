@@ -120,6 +120,10 @@ class AiCompanionViewModel(
     private val _shareImageV2State = MutableStateFlow<ShareImageV2State>(ShareImageV2State.Idle)
     val shareImageV2State: StateFlow<ShareImageV2State> = _shareImageV2State.asStateFlow()
 
+    // 海報就緒後不自動切換結果頁，等使用者點擊「一起去看看」才揭曉（與 iOS 一致）
+    private val _posterRevealed = MutableStateFlow(false)
+    val posterRevealed: StateFlow<Boolean> = _posterRevealed.asStateFlow()
+
     private val _introductionState = MutableStateFlow<IntroductionState>(IntroductionState.Idle)
     val introductionState: StateFlow<IntroductionState> = _introductionState.asStateFlow()
 
@@ -415,6 +419,7 @@ class AiCompanionViewModel(
         // 可能命中上一輪已產好的圖，秒回同一張海報）；uuid 生命週期從這裡開始，share-image 沿用同一組直到本輪結束
         completionUuid = newCompletionUuid()
         _shareImageV2State.value = ShareImageV2State.Idle // 新一輪重置，避免殘留上一輪的海報狀態
+        _posterRevealed.value = false
         viewModelScope.launch {
             _analysisState.value = AnalysisState.Analyzing
             completeQuizWithSoftFailRetry(selectedTags, shownCities).fold(
@@ -453,6 +458,11 @@ class AiCompanionViewModel(
                 onFailure = { _shareImageV2State.value = ShareImageV2State.Failed }
             )
         }
+    }
+
+    /** 使用者在產圖等待頁點擊「一起去看看」→ 揭曉海報結果頁。 */
+    fun revealPosterResult() {
+        _posterRevealed.value = true
     }
 
     /** 產圖成功後回填對應那筆歷史紀錄的 heroImageUrl，回顧列表/詳情頁才不用重打一次 35 秒的 API。 */
@@ -554,6 +564,7 @@ class AiCompanionViewModel(
         _quizAnswers.value = emptyMap()
         _analysisState.value = AnalysisState.Idle
         _shareImageV2State.value = ShareImageV2State.Idle
+        _posterRevealed.value = false
     }
 
     // ---------- Phase 2：行程規劃（travel-summary / travel-guide，皆無狀態 API） ----------

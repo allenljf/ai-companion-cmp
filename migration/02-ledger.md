@@ -258,6 +258,23 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 
 ## 決策補充紀錄
 
+- T21 打字機揭曉頁（2026-08-16）：恢復原版 `PosterGeneratingContent`/`TypewriterText`/`SequentialTypewriterItems`/
+  `ReasoningBubble`/`BreathingLoadingText`/`PosterReadyBanner` 六個 composable（逐行照搬換葉節點），加回
+  ViewModel 的 `posterRevealed`/`revealPosterResult()`。分析成功後先進打字機等待頁（不自動跳結果頁），
+  `Ready`/`Failed` 都讓「一起去看看」按鈕出現（軟失敗不卡死使用者）。
+- T21 tag icon 定案：後端實際只回 hero 與 stamp，**不回** tag_icon_urls——T20 一度做的三顆圓圖列拿掉，
+  highlight_tags 維持純文字 pill（不是 fallback，是後端本來就沒有這個資料）。`tagFallbackCategories`
+  留在 DTO/domain model 不刪（鏡射真實 API 形狀，YAGNI 成本低，之後後端補上就能直接接）。
+- T21 補回 3 個 fallback 欄位：`heroFallbackCategory`/`stampFallbackCategory`/`tagFallbackCategories`；
+  只有 `stampFallbackCategory` 有 UI 用途（`PosterFallbackAssets.stampDrawable()`，`stamp_url` 缺圖時退本地 icon）。
+  Fallback icon 8 顆（1 stamp + 7 tag，tag 系列雖不用但保留供未來 tag icon 恢復時使用）從原 Android 專案
+  複製進 composeResources；hero fallback 6 顆先不搬（hero 缺圖走無海報 fallback 版面，不需要類別 icon）。
+- **待決策（下個對話請向 Allen 確認）**：T21 實作過程中（一個中途被使用者停掉的 agent）順手改了兩處跟
+  T21 無關的地方，尚未決定去留：
+  1. `ui/TripScreens.kt`：拖曳 FAB 尺寸 100dp→72dp（改成與測驗頁頭像同尺寸）
+  2. `ui/CompanionRootScreen.kt`：行程成果頁關閉鈕的返回目的地，`PlanChat`→`Home`
+  這兩處已隨 T21 commit 一起進倉庫，如果要 revert，看這兩個檔案在 commit 前一版的差異即可。
+
 - T19 海報接回（2026-08-16，**部分推翻決策 1／6**）：後端 `share-image-v2` 已能產圖並回 `hero_url`，因此接回「顯示海報」。與原版關鍵差異：**後端同步一次回完（實測首次約 80 秒、同 uuid 重打約 35 秒，未快取），不是原版的 pending＋輪詢**，因此 app 端不做輪詢、不做 Bitmap 合成、不下載存檔（`poster/` 7 檔仍不移植）。ViewModel 只加簡化版 `ShareImageV2State`（Idle/Loading/Ready/Failed）與一個背景 coroutine：分析成功當下即觸發，結果頁文字先顯示、圖 ready 再補上；失敗只影響海報區塊（軟失敗契約）。Ktor 這支需**同時**放寬 `requestTimeoutMillis` 與 `socketTimeoutMillis`——產圖那 80 秒 socket 上無資料往來，只放寬前者會被預設 socket 逾時打斷。產圖成功回填 `QuizHistoryRecord.heroImageUrl`，回顧頁不必重打。`decorations`（stamp/tag icon 疊圖素材）未使用
 
 - 行程情境圖 `hero_image_url`（2026-08-16）：`travel-guide` 回應新增這支欄位（後端一併產好的遠端圖 URL，非另一支 API），沿 `TravelGuideDataResponse` → `TravelGuideResult` → `SavedTripRecord` 一路帶到本地持久化，回訪不必重打。三處占位換成 `CompanionAsyncImage`：成果頁 `TripHero`（226dp，圖在漸層 scrim 之下）、首頁「我的旅程」小卡（92dp）、`TripListScreen` 列表縮圖（72dp，無圖時 placeholder 仍是城市字）。`travel-revise` 不回這支欄位，靠 `trip.copy(...)` 保留原值；產圖失敗為 `null` → 空字串 → `CompanionAsyncImage` 自然退回漸層占位（軟失敗契約）

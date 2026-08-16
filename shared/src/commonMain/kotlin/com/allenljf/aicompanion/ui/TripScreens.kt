@@ -100,6 +100,9 @@ import kotlin.math.roundToInt
 
 // ---------- ③ 行程成果頁 ----------
 
+// 「請旅伴幫我改」FAB 尺寸：與測驗頁的旅伴頭像（QuizScreens.QuizBuddy）一致
+private val TRIP_REVISE_FAB_SIZE = 72.dp
+
 /**
  * hero：行程情境圖（travel-guide 的 hero_image_url）＋壓字（日期列＋大標）＋右上關閉鈕
  * （設計稿 TripHero，226dp）。無圖或載入失敗時退回品牌色深漸層占位。
@@ -631,7 +634,7 @@ private fun TripLoadedContent(
         TripBottomBar(onSave = onSave)
     }
 
-    // 「請旅伴幫我改」FAB：旅伴頭像圓鈕（100dp），蓋在所有天數內容之上的**單一共用實例**
+    // 「請旅伴幫我改」FAB：旅伴頭像圓鈕（72dp，與測驗頁 QuizBuddy 同尺寸），蓋在所有天數內容之上的**單一共用實例**
     // （不是每天各一顆），可拖曳移動且位置跨天保留；點擊開修改對話 bottom sheet，
     // target_day = 目前所在的 Day 分頁（總覽分頁不顯示——修改 API 要指定天，但拖曳位置仍保留）
     if (currentDay != null) {
@@ -641,7 +644,7 @@ private fun TripLoadedContent(
                 .align(Alignment.BottomEnd)
                 .padding(end = Tokens.spacing200, bottom = 96.dp)
                 .offset { IntOffset(fabDragOffset.x.roundToInt(), fabDragOffset.y.roundToInt()) }
-                .size(100.dp)
+                .size(TRIP_REVISE_FAB_SIZE)
                 .shadow(8.dp, CircleShape)
                 .clip(CircleShape)
                 .background(Tokens.colorBackgroundPrimaryLighter)
@@ -649,7 +652,7 @@ private fun TripLoadedContent(
                     detectDragGestures { change, dragAmount ->
                         change.consume()
                         // 基準位置在右下角，offset 只允許往左/往上（負值），並夾在畫面範圍內
-                        val fabPx = 100.dp.toPx()
+                        val fabPx = TRIP_REVISE_FAB_SIZE.toPx()
                         fabDragOffset = Offset(
                             (fabDragOffset.x + dragAmount.x)
                                 .coerceIn(-(contentSize.width - fabPx).coerceAtLeast(0f), 0f),

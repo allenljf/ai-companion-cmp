@@ -1,11 +1,15 @@
 package com.allenljf.aicompanion.ui
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.StartOffset
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.scaleIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -38,7 +42,9 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -59,6 +65,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.allenljf.aicompanion.model.QuizCompletionResult
@@ -80,9 +87,18 @@ import com.allenljf.aicompanion.viewmodel.AnalysisState
 import com.allenljf.aicompanion.viewmodel.CompanionCreationState
 import com.allenljf.aicompanion.viewmodel.ShareImageV2State
 import io.ktor.http.encodeURLParameter
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import aicompanion.shared.generated.resources.Res
+import aicompanion.shared.generated.resources.companion_stamp_fallback_generic
+import aicompanion.shared.generated.resources.companion_tag_fallback_adventure
+import aicompanion.shared.generated.resources.companion_tag_fallback_culture
+import aicompanion.shared.generated.resources.companion_tag_fallback_food
+import aicompanion.shared.generated.resources.companion_tag_fallback_generic
+import aicompanion.shared.generated.resources.companion_tag_fallback_nightlife
+import aicompanion.shared.generated.resources.companion_tag_fallback_relaxation
+import aicompanion.shared.generated.resources.companion_tag_fallback_shopping
 import aicompanion.shared.generated.resources.ic_arrow_right_line
 import aicompanion.shared.generated.resources.ic_copy_line
 import aicompanion.shared.generated.resources.ic_delete_line
@@ -98,10 +114,13 @@ import aicompanion.shared.generated.resources.ic_share_android_line
 // ---------- 結果頁（C-1 統一畫面；海報產圖/分享圖鏈路整段不搬，見 migration/02-ledger.md）----------
 
 /**
- * 測驗結果頁（T20：恢復沈浸式海報完整版）。
+ * 測驗結果頁（T21：恢復原版產圖等待頁，結果不再自動顯示）。
+ * 分析成功後先進 [PosterGeneratingContent] 打字機等待頁（[posterRevealed]=false），使用者點擊
+ * 「一起去看看」（[AiCompanionViewModel.revealPosterResult]）才真正顯示以下內容：
  * hero 就緒（[ShareImageV2State.Ready]）時走沈浸式版面：hero 滿版無 padding、往上頂到狀態列下方
  * （此時根 Box 不能吃 [Modifier.statusBarsPadding]，否則頂部會多一截留白）；hero 底部疊黑色半透明
- * 資訊卡（目的地＋tagline＋stamp 圓圖），下方接 tag 圓圖列＋既有推薦理由／分享文案卡。
+ * 資訊卡（目的地＋tagline＋stamp 圓圖），下方接 tag 文字 pill＋既有推薦理由／分享文案卡
+ * （API 只回 hero 與 stamp，不回 tag icon，故 tag 維持純文字，不做圓圖）。
  * hero 未就緒（Idle/Loading/Failed）維持 T19 的簡化文字展示 fallback（原始碼「無海報」分支）。
  */
 @Composable
@@ -118,6 +137,7 @@ internal fun ResultScreen(
     val analysis by viewModel.analysisState.collectAsStateWithLifecycle()
     val result = (analysis as? AnalysisState.Success)?.result
     val shareImageV2 by viewModel.shareImageV2State.collectAsStateWithLifecycle()
+    val posterRevealed by viewModel.posterRevealed.collectAsStateWithLifecycle()
     var showBottomSheet by remember { mutableStateOf(false) }
     val shareText = rememberShareText()
     val shareImageToInstagramStory = rememberShareImageToInstagramStory()
@@ -135,14 +155,15 @@ internal fun ResultScreen(
     }
 
     val isPosterReady = shareImageV2 is ShareImageV2State.Ready
+    // 產圖等待頁／沈浸式 hero 兩者都自己吃 statusBarsPadding，根 Box 這裡不能重複套一次
+    val showingSelfPaddedContent = (analysis is AnalysisState.Success && !posterRevealed) || isPosterReady
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .testTag("companion_result_screen")
             .background(Tokens.colorWhite)
-            // 沈浸式 hero 需要頂到狀態列下方；其餘狀態（含 hero 尚未就緒）維持退到狀態列下方，避免標題被瀏海遮住
-            .then(if (isPosterReady) Modifier else Modifier.statusBarsPadding()),
+            .then(if (showingSelfPaddedContent) Modifier else Modifier.statusBarsPadding()),
     ) {
         when {
             analysis is AnalysisState.SoftFailed || analysis is AnalysisState.Error -> {
@@ -176,6 +197,18 @@ internal fun ResultScreen(
                 )
             }
 
+            analysis is AnalysisState.Success && !posterRevealed -> {
+                // T21：分析結果已到手但海報還沒揭曉——打字機依序播完思考過程/身份摘要/推薦理由/分享文案，
+                // 不自動跳結果頁；Failed 也視為「可繼續」（軟失敗契約：無海報不能讓使用者卡在等待頁）
+                PosterGeneratingContent(
+                    avatarUrl = creation.avatarUrl,
+                    companionName = creation.companionName.ifBlank { "旅伴" }, // TODO: i18n fallback
+                    result = result,
+                    isPosterReady = shareImageV2 is ShareImageV2State.Ready || shareImageV2 is ShareImageV2State.Failed,
+                    onViewResult = { viewModel.revealPosterResult() },
+                )
+            }
+
             else -> {
                 val currentShareImageV2 = shareImageV2
                 if (currentShareImageV2 is ShareImageV2State.Ready) {
@@ -200,12 +233,11 @@ internal fun ResultScreen(
                             )
                         }
                         Spacer(Modifier.height(Tokens.spacing200))
-                        ShareImageV2TagIconsRow(content = shareResult.content, tagIconUrls = shareResult.tagIconUrls)
+                        // 後端暫不回傳 tag_icon_urls（decorations 缺漏）：拿掉圓圖列，
+                        // 直接沿用下面 CompanionResultHighlightContent 的純文字 tag pill
                         CompanionResultHighlightContent(
                             result = result,
                             showDestinationAndTagline = false,
-                            // tag 圓圖列已經取代這排純文字 chip（任務規格第 3 點）
-                            showHighlightTagPills = false,
                         )
                         CompanionResultDetailsContent(result = result, bottomSafeArea = 96.dp)
                     }
@@ -381,6 +413,10 @@ private const val HERO_ASPECT_RATIO = 9f / 16f
  * 讓圖片往上頂到狀態列下方；底部疊一層黑色半透明資訊卡（目的地＋tagline 白字 + 目的地 stamp 圓圖），
  * 比照原始碼 `PosterHeroWithBadge`（reference SixZonePosterComposer.kt:161-224），
  * 只是把浮動圓角卡片改成貼齊 hero 邊緣的滿版長條，呼應「沈浸式」的滿版訴求。
+ * T21：stamp 圓圖改為恆顯示——[stampUrl] 空時用內建 fallback icon 佔位（原本是 stampUrl 空就整塊
+ * 不顯示，現在比照 tag icon 走 per-slot fallback，見任務規格 C）。stamp 只有一顆 generic fallback
+ * 素材（無 category 對應表，比照 reference `PosterFallbackAssets.stampDrawable()` 不吃參數），
+ * 故 `stamp_fallback_category` 欄位雖已補進 domain model，這裡不需要引用。
  */
 @Composable
 private fun ImmersiveShareHeroWithBadge(
@@ -423,62 +459,35 @@ private fun ImmersiveShareHeroWithBadge(
                     )
                 }
             }
-            if (!stampUrl.isNullOrBlank()) {
-                Spacer(Modifier.width(Tokens.spacing200))
-                CompanionAsyncImage(
-                    url = stampUrl,
-                    modifier = Modifier
-                        .size(64.dp)
-                        .clip(CircleShape)
-                        .testTag("companion_result_hero_stamp"),
-                )
-            }
+            Spacer(Modifier.width(Tokens.spacing200))
+            CompanionAsyncImage(
+                url = stampUrl.orEmpty(),
+                modifier = Modifier
+                    .size(64.dp)
+                    .clip(CircleShape)
+                    .testTag("companion_result_hero_stamp"),
+                placeholder = {
+                    Icon(
+                        painter = painterResource(PosterFallbackAssets.stampDrawable()),
+                        contentDescription = null,
+                        tint = Color.Unspecified,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                },
+            )
         }
     }
 }
 
 /**
- * highlight_tags 三個標籤配 decorations.tag_icon_urls 三張圓圖一起顯示（任務規格第 3 點），
- * 取代原本 [CompanionResultHighlightContent] 那排純文字 chip；圓形白框比照 SixZonePosterSpec
- * （reference Live 版原本刻意不加框，這裡改回加框是本次需求的決定，見任務報告）。
- * tagIconUrls 為空（decorations 缺漏）時整排不顯示，不影響其餘版面。
+ * fallback_category → 內建 bundled 素材，對應 spec「Per-Slot Asset Fallback」（比照 reference
+ * `poster/PosterFallbackAssets.kt`）。類別字串直接來自後端 stamp_fallback_category，
+ * 任何未知類別一律退到 generic 版本，避免 App 端因後端新增分類而崩潰。
+ * tag 圓圖那組 fallback（`tag_fallback_categories`）已隨後端不再回傳 tag_icon_urls 一併移除——
+ * 沈浸式版面現在跟其他版面一樣，只顯示 highlight_tags 純文字 pill。
  */
-@Composable
-private fun ShareImageV2TagIconsRow(content: ShareImageV2Content, tagIconUrls: List<String>) {
-    // 全部缺圖（list 空或全為 null 佔位的空字串）才整排不顯示；部分缺圖時保留佔位圓維持與標籤對位
-    if (tagIconUrls.none { it.isNotBlank() }) return
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = Tokens.spacing300, vertical = Tokens.spacing100)
-            .testTag("companion_result_tag_icons"),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-    ) {
-        tagIconUrls.forEachIndexed { index, url ->
-            val tag = content.highlightTags.getOrNull(index).orEmpty()
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                CompanionAsyncImage(
-                    url = url,
-                    modifier = Modifier
-                        .size(72.dp)
-                        .clip(CircleShape)
-                        .border(2.dp, Tokens.colorWhite, CircleShape)
-                        .background(Tokens.colorBackgroundPrimaryLighter)
-                        .testTag("companion_result_tag_icon_$index"),
-                )
-                if (tag.isNotBlank()) {
-                    Spacer(Modifier.height(Tokens.spacing050))
-                    Text(
-                        tag,
-                        fontSize = Tokens.fontSize1,
-                        color = Tokens.colorTextDarker,
-                        textAlign = TextAlign.Center,
-                        maxLines = 1,
-                    )
-                }
-            }
-        }
-    }
+private object PosterFallbackAssets {
+    fun stampDrawable() = Res.drawable.companion_stamp_fallback_generic
 }
 
 /**
@@ -564,6 +573,386 @@ private fun LoadingDotsRow() {
                     .size(14.dp)
                     .clip(CircleShape)
                     .background(Tokens.colorBackgroundPrimaryMedium.copy(alpha = alpha.value)),
+            )
+        }
+    }
+}
+
+// ---------- T21：海報產圖等待頁（分析成功後、揭曉結果前）----------
+
+private const val TYPEWRITER_CHAR_DELAY_MS = 50L
+
+/** 逐字打字機效果：每 [TYPEWRITER_CHAR_DELAY_MS] ms 多顯示一個字，打字中結尾帶游標；[onFinished] 於整段顯示完後呼叫一次。 */
+@Composable
+private fun TypewriterText(
+    text: String,
+    color: Color,
+    fontSize: TextUnit,
+    modifier: Modifier = Modifier,
+    onFinished: () -> Unit = {},
+) {
+    var visibleCount by remember(text) { mutableIntStateOf(0) }
+    LaunchedEffect(text) {
+        visibleCount = 0
+        for (i in 1..text.length) {
+            visibleCount = i
+            delay(TYPEWRITER_CHAR_DELAY_MS)
+        }
+        onFinished()
+    }
+    val isTyping = visibleCount < text.length
+    Text(
+        text = text.take(visibleCount) + if (isTyping) "▏" else "",
+        color = color,
+        fontSize = fontSize,
+        modifier = modifier,
+    )
+}
+
+private const val TAG_STAGGER_DELAY_MS = 120L
+
+private const val SEQUENTIAL_ITEM_GAP_MS = 1000L
+
+/**
+ * 序列逐項顯示：每項由 [itemContent] 以打字機打完（回呼 onFinished）後，
+ * 間隔 [SEQUENTIAL_ITEM_GAP_MS] 再顯示下一項；最後一項打完同樣間隔後呼叫一次 [onAllFinished]，
+ * 讓下一個區塊（如 recommendation → social_post）維持相同節奏銜接。
+ */
+@Composable
+private fun SequentialTypewriterItems(
+    items: List<String>,
+    itemSpacing: Dp,
+    modifier: Modifier = Modifier,
+    onAllFinished: () -> Unit = {},
+    itemContent: @Composable (text: String, onFinished: () -> Unit) -> Unit,
+) {
+    var typedCount by remember(items) { mutableIntStateOf(0) }
+    var visibleCount by remember(items) { mutableIntStateOf(if (items.isEmpty()) 0 else 1) }
+    LaunchedEffect(typedCount) {
+        when {
+            typedCount in 1 until items.size -> {
+                delay(SEQUENTIAL_ITEM_GAP_MS)
+                visibleCount = typedCount + 1
+            }
+            typedCount == items.size && items.isNotEmpty() -> {
+                delay(SEQUENTIAL_ITEM_GAP_MS)
+                onAllFinished()
+            }
+        }
+    }
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(itemSpacing),
+    ) {
+        items.take(visibleCount).forEachIndexed { index, text ->
+            itemContent(text) { typedCount = maxOf(typedCount, index + 1) }
+        }
+    }
+}
+
+/**
+ * 海報產圖等待畫面（60s 起跳、可達 180s）：分析結果已到手，
+ * 頂部固定頭像/名字/標題，中段可捲動內容依序播
+ * reasoning（AI 思考過程逐句對話框，最後一句主色外框強調）→ 身份摘要 → recommendation → social_post，
+ * 每項間隔 2 秒、逐字打字機顯示，內容增長時自動捲到底。
+ * 底部固定白底列：產圖中顯示呼吸文字；[isPosterReady] 後改顯示「一起去看看」按鈕（[onViewResult]），
+ * 不自動跳結果頁（與 iOS 一致）。
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun PosterGeneratingContent(
+    avatarUrl: String,
+    companionName: String,
+    result: QuizCompletionResult?,
+    isPosterReady: Boolean,
+    onViewResult: () -> Unit,
+) {
+    val reasoning = result?.reasoning.orEmpty().filter { it.isNotBlank() }
+    val recommendations = result?.recommendation.orEmpty().filter { it.isNotBlank() }
+    val socialPost = result?.socialPost.orEmpty()
+    val highlightTags = result?.highlightTags.orEmpty()
+    val clipboardManager = LocalClipboardManager.current
+    // 區塊序列：reasoning 全部播完才輪到身份摘要與 recommendation，recommendation 播完才輪到 social_post
+    // reasoning 可能為空陣列（LLM 失敗或舊版 prompt），此時直接從 recommendation 開始
+    var reasoningDone by remember(result) { mutableStateOf(reasoning.isEmpty()) }
+    var recommendationDone by remember(result) { mutableStateOf(recommendations.isEmpty()) }
+
+    // 打字機持續增高內容：高度一變就自動捲到底，使用者不用自己往下滑
+    val scrollState = rememberScrollState()
+    LaunchedEffect(scrollState.maxValue) {
+        if (scrollState.maxValue > 0) scrollState.animateScrollTo(scrollState.maxValue)
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .statusBarsPadding()
+            .testTag("companion_share_poster_generating"),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        // 頂部固定 header：頭像 + 名字 + 標題（內容捲動時不動）
+        Spacer(Modifier.height(Tokens.spacing300))
+        CompanionAsyncImage(
+            url = avatarUrl,
+            blurInOnLoad = true,
+            modifier = Modifier
+                .size(96.dp)
+                .clip(CircleShape)
+                .background(Tokens.colorBackgroundPrimaryLighter),
+            placeholder = {
+                Text("?", color = Tokens.colorTextPrimaryDark, fontSize = Tokens.fontSize9)
+            },
+        )
+        Spacer(Modifier.height(Tokens.spacing150))
+        Text(
+            companionName,
+            color = Tokens.colorTextPrimaryDark,
+            fontWeight = FontWeight(Tokens.fontWeightBold),
+            fontSize = Tokens.fontSize5,
+        )
+        Spacer(Modifier.height(Tokens.spacing100))
+        Text(
+            "正在解析你的旅行 DNA", // TODO: i18n
+            fontWeight = FontWeight(Tokens.fontWeightBold),
+            fontSize = Tokens.fontSize4,
+            color = Tokens.colorTextDarker,
+        )
+        Spacer(Modifier.height(Tokens.spacing200))
+
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .verticalScroll(scrollState)
+                .padding(horizontal = Tokens.spacing300),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            if (reasoning.isNotEmpty()) {
+                // 思考過程逐句對話框呈現；最後一句（揭曉目的地）以主色外框與文字強調
+                SequentialTypewriterItems(
+                    items = reasoning,
+                    itemSpacing = Tokens.spacing150,
+                    onAllFinished = { reasoningDone = true },
+                    modifier = Modifier.testTag("companion_share_poster_generating_reasoning"),
+                ) { text, onFinished ->
+                    val isHighlight = text == reasoning.last()
+                    ReasoningBubble(isHighlight = isHighlight) {
+                        TypewriterText(
+                            text = text,
+                            color = if (isHighlight) Tokens.colorTextPrimaryDark else Tokens.colorTextDarker,
+                            fontSize = Tokens.fontSize3,
+                            onFinished = onFinished,
+                        )
+                    }
+                }
+                Spacer(Modifier.height(Tokens.spacing300))
+            }
+
+            // 分析結果摘要（travel_identity / destination / tagline / highlight_tags）：思考過程播完才亮出
+            if (reasoningDone) {
+                if (result?.travelIdentity.orEmpty().isNotBlank()) {
+                    Text(
+                        result?.travelIdentity.orEmpty(),
+                        fontWeight = FontWeight(Tokens.fontWeightBold),
+                        fontSize = Tokens.fontSize6,
+                        color = Tokens.colorTextPrimaryDark,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.testTag("companion_share_poster_generating_travel_identity"),
+                    )
+                    Spacer(Modifier.height(Tokens.spacing100))
+                }
+                if (result?.destinationCn.orEmpty().isNotBlank()) {
+                    Text(
+                        "${result?.destinationCn.orEmpty()} · ${result?.destinationCountry.orEmpty()}",
+                        color = Tokens.colorTextDark,
+                        fontSize = Tokens.fontSize3,
+                        modifier = Modifier.testTag("companion_share_poster_generating_destination"),
+                    )
+                    Spacer(Modifier.height(Tokens.spacing100))
+                }
+                if (result?.tagline.orEmpty().isNotBlank()) {
+                    Text(
+                        result?.tagline.orEmpty(),
+                        color = Tokens.colorTextMedium,
+                        fontSize = Tokens.fontSize3,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.testTag("companion_share_poster_generating_tagline"),
+                    )
+                    Spacer(Modifier.height(Tokens.spacing150))
+                }
+                if (highlightTags.isNotEmpty()) {
+                    // 標籤逐一淡入出現，取代一次性全部顯示的乾硬感
+                    var revealedTagCount by remember(highlightTags) { mutableIntStateOf(0) }
+                    LaunchedEffect(highlightTags) {
+                        highlightTags.indices.forEach { index ->
+                            delay(TAG_STAGGER_DELAY_MS)
+                            revealedTagCount = index + 1
+                        }
+                    }
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(Tokens.spacing100, Alignment.CenterHorizontally),
+                        verticalArrangement = Arrangement.spacedBy(Tokens.spacing100),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("companion_share_poster_generating_highlight_tags"),
+                    ) {
+                        highlightTags.forEachIndexed { index, tag ->
+                            AnimatedVisibility(
+                                visible = index < revealedTagCount,
+                                enter = fadeIn(tween(200)) + scaleIn(initialScale = 0.85f, animationSpec = tween(200)),
+                            ) {
+                                SelectablePill(
+                                    label = tag,
+                                    isSelected = true,
+                                    enabled = false,
+                                    testTag = "poster_generating_tag_$tag",
+                                    onClick = {},
+                                )
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(Tokens.spacing200))
+                }
+            }
+
+            if (recommendations.isNotEmpty() && reasoningDone) {
+                TitledInfoCard(
+                    title = "推薦理由", // TODO: i18n
+                    testTag = "companion_share_poster_generating_recommendation",
+                ) {
+                    SequentialTypewriterItems(
+                        items = recommendations,
+                        itemSpacing = Tokens.spacing100,
+                        onAllFinished = { recommendationDone = true },
+                    ) { text, onFinished ->
+                        TypewriterText(
+                            text = text,
+                            color = Tokens.colorTextDarker,
+                            fontSize = Tokens.fontSize3,
+                            onFinished = onFinished,
+                        )
+                    }
+                }
+                Spacer(Modifier.height(Tokens.spacing150))
+            }
+            if (socialPost.isNotBlank() && reasoningDone && recommendationDone) {
+                TitledInfoCard(
+                    title = "分享文案", // TODO: i18n
+                    testTag = "companion_share_poster_generating_social_post",
+                    onCopyClick = { clipboardManager.setText(AnnotatedString(socialPost)) }, // TODO: 複製成功提示
+                ) {
+                    TypewriterText(
+                        text = socialPost,
+                        color = Tokens.colorTextDarker,
+                        fontSize = Tokens.fontSize3,
+                    )
+                }
+            }
+            Spacer(Modifier.height(Tokens.spacing300))
+        }
+
+        // 底部固定列：白底、不遮擋上方可捲動內容（內容區以 weight 撐滿，非疊在其上）
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Tokens.colorWhite)
+                .navigationBarsPadding()
+                .padding(horizontal = Tokens.spacing300, vertical = Tokens.spacing200),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (isPosterReady) {
+                PosterReadyBanner(onClick = onViewResult)
+            } else {
+                BreathingLoadingText(
+                    text = "繼續描繪你的專屬旅行場景⋯", // TODO: i18n
+                )
+            }
+        }
+    }
+}
+
+/** 思考過程對話框：一般為白底淺灰外框；[isHighlight]（最後一句揭曉目的地）改為主色外框與底色。 */
+@Composable
+private fun ReasoningBubble(
+    isHighlight: Boolean,
+    content: @Composable () -> Unit,
+) {
+    val bgColor = if (isHighlight) Tokens.colorBackgroundPrimaryLighter else Tokens.colorWhite
+    val borderColor = if (isHighlight) Tokens.colorBorderPrimaryLight else Tokens.colorBorderLight
+    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(Tokens.radiusLg))
+                .border(1.dp, borderColor, RoundedCornerShape(Tokens.radiusLg))
+                .background(bgColor)
+                .padding(Tokens.spacing200),
+        ) {
+            content()
+        }
+    }
+}
+
+/** 呼吸效果文字：透明度深淺來回漸變，用於置底產圖等待提示。 */
+@Composable
+private fun BreathingLoadingText(text: String) {
+    val infiniteTransition = rememberInfiniteTransition(label = "breathing_loading")
+    val alpha by infiniteTransition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1000),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "breathing_alpha",
+    )
+    Text(
+        text,
+        color = Tokens.colorTextMedium.copy(alpha = alpha),
+        fontSize = Tokens.fontSize3,
+        modifier = Modifier.testTag("companion_share_poster_generating_breathing"),
+    )
+}
+
+/** 海報就緒的置底入口：主色橫幅按鈕，點擊才前往結果頁（不自動跳頁，與 iOS 一致）。 */
+@Composable
+private fun PosterReadyBanner(onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(Tokens.radiusLg))
+            .background(Tokens.colorBackgroundPrimaryMedium)
+            .clickable(onClick = onClick)
+            .padding(Tokens.spacing200)
+            .testTag("companion_share_poster_ready_banner"),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                "我找到你的旅行 DNA 了", // TODO: i18n
+                color = Tokens.colorTextPrimaryLighter,
+                fontSize = Tokens.fontSize2,
+            )
+            Spacer(Modifier.height(Tokens.spacing050))
+            Text(
+                "我們一起去看看吧！", // TODO: i18n
+                color = Tokens.colorWhite,
+                fontWeight = FontWeight(Tokens.fontWeightBold),
+                fontSize = Tokens.fontSize4,
+            )
+        }
+        Spacer(Modifier.width(Tokens.spacing150))
+        Box(
+            modifier = Modifier
+                .size(Tokens.dimensionIconXl)
+                .clip(CircleShape)
+                .background(Tokens.colorBackgroundPrimaryLight),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painter = painterResource(Res.drawable.ic_arrow_right_line),
+                contentDescription = null,
+                tint = Tokens.colorWhite,
+                modifier = Modifier.size(Tokens.dimensionIconSm),
             )
         }
     }

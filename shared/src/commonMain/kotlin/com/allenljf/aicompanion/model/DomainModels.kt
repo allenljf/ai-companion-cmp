@@ -109,8 +109,11 @@ data class QuizCompletionResult(
  */
 data class ShareImageV2Result(
     val heroUrl: String? = null,
+    val heroFallbackCategory: String = "", // T21：目前無 UI 用途，見 ApiModels.kt 說明
     val stampUrl: String? = null,
+    val stampFallbackCategory: String = "",
     val tagIconUrls: List<String> = emptyList(),
+    val tagFallbackCategories: List<String> = emptyList(),
     val content: ShareImageV2Content = ShareImageV2Content(),
     val failReason: String? = null
 ) {
