@@ -411,7 +411,9 @@ data class TravelGuideDataResponse(
     // phase=done 時為 {type:"view_trip", label:"看看完整行程"}；仍有 unplanned_days 時為 null
     @SerialName("main_action") val mainAction: TravelGuideMainActionResponse? = null,
     @SerialName("ai_model") val aiModel: String? = null,
-    @SerialName("fail_reason") val failReason: String? = null
+    @SerialName("fail_reason") val failReason: String? = null,
+    // 行程情境圖（後端產好的遠端 URL），供成果頁 hero 與「我的旅程」縮圖使用；產圖失敗為 null
+    @SerialName("hero_image_url") val heroImageUrl: String? = null
 )
 
 @Serializable
@@ -552,7 +554,8 @@ data class QuizGalleryItemResponse(
 
 // ---------- POST /companion/share-image-v2 ----------
 // T19：後端已產好合成圖，App 只顯示 hero_url，不做 Bitmap 疊字/輪詢（見 migration/01-decisions.md #6 後續變更）。
-// content/decorations 對應欄位刻意不宣告——ignoreUnknownKeys=true 會自動忽略，這裡只取顯示 hero 需要的最小集合。
+// T20：結果頁改回沈浸式完整版面（hero + 黑色資訊卡 + tag 圓圖），需要 content/decorations 補齊顯示欄位；
+// hero_fallback_category/share_fallback 仍不宣告——ignoreUnknownKeys=true 自動忽略，這兩者目前沒有對應 UI 需求。
 
 @Serializable
 data class ShareImageV2Request(
@@ -566,5 +569,26 @@ data class ShareImageV2DataResponse(
     // 實測恆為同步回 "ready"（見 scratchpad/sdd/share-image-v2-response.json），不需輪詢
     @SerialName("status") val status: String = "",
     @SerialName("hero_url") val heroUrl: String? = null,
+    @SerialName("content") val content: ShareImageV2ContentResponse = ShareImageV2ContentResponse(),
+    @SerialName("decorations") val decorations: ShareImageV2DecorationsResponse = ShareImageV2DecorationsResponse(),
     @SerialName("fail_reason") val failReason: String? = null
+)
+
+@Serializable
+data class ShareImageV2ContentResponse(
+    @SerialName("travel_identity") val travelIdentity: String = "",
+    @SerialName("travel_identity_en") val travelIdentityEn: String = "",
+    @SerialName("destination_cn") val destinationCn: String = "",
+    @SerialName("destination_en") val destinationEn: String = "",
+    @SerialName("tagline") val tagline: String = "",
+    @SerialName("highlight_tags") val highlightTags: List<String> = emptyList(),
+    @SerialName("companion_quote") val companionQuote: String = "",
+    @SerialName("companion_name") val companionName: String? = null
+)
+
+@Serializable
+data class ShareImageV2DecorationsResponse(
+    @SerialName("stamp_url") val stampUrl: String? = null,
+    // 個別 tag icon 可能因素材缺漏回 null（見 tag_fallback_categories），mapping 時濾掉
+    @SerialName("tag_icon_urls") val tagIconUrls: List<String?> = emptyList()
 )

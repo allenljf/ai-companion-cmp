@@ -65,6 +65,20 @@ fun QuizCompletionDataResponse.toDomain() = QuizCompletionResult(
 
 fun ShareImageV2DataResponse.toDomain() = ShareImageV2Result(
     heroUrl = heroUrl,
+    stampUrl = decorations.stampUrl,
+    // 保留 null 佔位（轉空字串）：list 與 highlight_tags 逐位對應，filterNotNull 會讓 icon 和標籤錯位；
+    // 空字串在 UI 端落到 CompanionAsyncImage 的 placeholder 圓（見 ShareImageV2TagIconsRow）
+    tagIconUrls = decorations.tagIconUrls.map { it.orEmpty() },
+    content = ShareImageV2Content(
+        travelIdentity = content.travelIdentity,
+        travelIdentityEn = content.travelIdentityEn,
+        destinationCn = content.destinationCn,
+        destinationEn = content.destinationEn,
+        tagline = content.tagline,
+        highlightTags = content.highlightTags,
+        companionQuote = content.companionQuote,
+        companionName = content.companionName.orEmpty()
+    ),
     failReason = failReason
 )
 
@@ -156,6 +170,7 @@ fun TravelGuideDataResponse.toDomain() = TravelGuideResult(
     days = itineraryPatch?.days?.map { it.toDomain() }.orEmpty(),
     progressLabel = progressLabel,
     mainActionLabel = mainAction?.label?.takeIf { it.isNotBlank() },
+    heroImageUrl = heroImageUrl.orEmpty(),
     failReason = failReason
 )
 

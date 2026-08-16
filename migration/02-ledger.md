@@ -12,7 +12,7 @@
 
 ## Global Constraints（來自 01-decisions.md 與 CLAUDE.md，每個 task 都適用）
 
-- 目標平台只有 **Android + iOS**；expect/actual 只允許一組（文字分享）
+- 目標平台只有 **Android + iOS**；expect/actual 原則上只允許一組（文字分享），**T20 起解除**——結果頁海報完整版需要 IG 限動分享（圖片）與開外部瀏覽器兩組額外能力，經使用者本次需求明確同意新增，見下方決策補充
 - **海報全鏈路不做**：poster/ 目錄 7 檔、`FetchShareImageV2UseCase`、share-image API 一律跳過
 - **不重寫 ViewModel 狀態機**；UI 搬程式碼、只換葉節點
 - 命名去 KKday/B2C 化：`KKButton`→`AppButton` 等；package 一律 `com.allenljf.aicompanion.*`
@@ -259,6 +259,8 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 ## 決策補充紀錄
 
 - T19 海報接回（2026-08-16，**部分推翻決策 1／6**）：後端 `share-image-v2` 已能產圖並回 `hero_url`，因此接回「顯示海報」。與原版關鍵差異：**後端同步一次回完（實測首次約 80 秒、同 uuid 重打約 35 秒，未快取），不是原版的 pending＋輪詢**，因此 app 端不做輪詢、不做 Bitmap 合成、不下載存檔（`poster/` 7 檔仍不移植）。ViewModel 只加簡化版 `ShareImageV2State`（Idle/Loading/Ready/Failed）與一個背景 coroutine：分析成功當下即觸發，結果頁文字先顯示、圖 ready 再補上；失敗只影響海報區塊（軟失敗契約）。Ktor 這支需**同時**放寬 `requestTimeoutMillis` 與 `socketTimeoutMillis`——產圖那 80 秒 socket 上無資料往來，只放寬前者會被預設 socket 逾時打斷。產圖成功回填 `QuizHistoryRecord.heroImageUrl`，回顧頁不必重打。`decorations`（stamp/tag icon 疊圖素材）未使用
+
+- 行程情境圖 `hero_image_url`（2026-08-16）：`travel-guide` 回應新增這支欄位（後端一併產好的遠端圖 URL，非另一支 API），沿 `TravelGuideDataResponse` → `TravelGuideResult` → `SavedTripRecord` 一路帶到本地持久化，回訪不必重打。三處占位換成 `CompanionAsyncImage`：成果頁 `TripHero`（226dp，圖在漸層 scrim 之下）、首頁「我的旅程」小卡（92dp）、`TripListScreen` 列表縮圖（72dp，無圖時 placeholder 仍是城市字）。`travel-revise` 不回這支欄位，靠 `trip.copy(...)` 保留原值；產圖失敗為 `null` → 空字串 → `CompanionAsyncImage` 自然退回漸層占位（軟失敗契約）
 
 - UI 調整（2026-08-16，獨立 app 定位）：首頁與建立旅伴第一步的返回鍵移除（獨立 app 沒有上一頁，原本點了沒反應），改留等寬 Spacer 讓標題不位移；建立旅伴第二/三步的返回鍵**保留**（那是精靈步驟回退，實際有作用）。首頁移除「帶訂單／從心願清單／從瀏覽記錄」三個開場入口（獨立 app 不會有這些紀錄），對應的 `onPlanTripWith*` 參數與呼叫點一併移除；ViewModel 的 `startPlanFromOrders/Wish/History` 與 `OrderOpening` step 保留不動（不重寫狀態機），成為暫時無入口的死路徑
 

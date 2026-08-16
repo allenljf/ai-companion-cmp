@@ -4,5 +4,11 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<!-- canOpenURL(instagram-stories://...) 沒宣告會恆回 false，見
+	     platform/ShareImageToInstagramStory.ios.kt -->
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>instagram-stories</string>
+	</array>
 </dict>
 </plist>

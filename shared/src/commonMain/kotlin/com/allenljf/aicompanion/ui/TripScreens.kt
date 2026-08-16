@@ -100,7 +100,10 @@ import kotlin.math.roundToInt
 
 // ---------- ③ 行程成果頁 ----------
 
-/** hero：品牌色深漸層占位＋壓字（日期列＋大標）＋右上關閉鈕（設計稿 TripHero，226dp）。 */
+/**
+ * hero：行程情境圖（travel-guide 的 hero_image_url）＋壓字（日期列＋大標）＋右上關閉鈕
+ * （設計稿 TripHero，226dp）。無圖或載入失敗時退回品牌色深漸層占位。
+ */
 @Composable
 private fun TripHero(trip: SavedTripRecord, onClose: () -> Unit) {
     Box(
@@ -116,6 +119,10 @@ private fun TripHero(trip: SavedTripRecord, onClose: () -> Unit) {
                 ),
             ),
     ) {
+        CompanionAsyncImage(
+            url = trip.heroImageUrl,
+            modifier = Modifier.fillMaxSize(),
+        )
         Box(
             modifier = Modifier
                 .fillMaxSize()

@@ -41,12 +41,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalDensity
@@ -59,6 +63,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.allenljf.aicompanion.model.QuizCompletionResult
 import com.allenljf.aicompanion.model.QuizHistoryRecord
+import com.allenljf.aicompanion.model.ShareImageV2Content
+import com.allenljf.aicompanion.platform.rememberOpenUrl
+import com.allenljf.aicompanion.platform.rememberShareImageToInstagramStory
 import com.allenljf.aicompanion.platform.rememberShareText
 import com.allenljf.aicompanion.theme.Tokens
 import com.allenljf.aicompanion.ui.components.AppButton
@@ -72,6 +79,8 @@ import com.allenljf.aicompanion.viewmodel.AiCompanionViewModel
 import com.allenljf.aicompanion.viewmodel.AnalysisState
 import com.allenljf.aicompanion.viewmodel.CompanionCreationState
 import com.allenljf.aicompanion.viewmodel.ShareImageV2State
+import io.ktor.http.encodeURLParameter
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import aicompanion.shared.generated.resources.Res
 import aicompanion.shared.generated.resources.ic_arrow_right_line
@@ -83,13 +92,17 @@ import aicompanion.shared.generated.resources.ic_map_location_line
 import aicompanion.shared.generated.resources.ic_message_line
 import aicompanion.shared.generated.resources.ic_note_line
 import aicompanion.shared.generated.resources.ic_people_line
+import aicompanion.shared.generated.resources.ic_road_map_line
+import aicompanion.shared.generated.resources.ic_share_android_line
 
 // ---------- 結果頁（C-1 統一畫面；海報產圖/分享圖鏈路整段不搬，見 migration/02-ledger.md）----------
 
 /**
- * 測驗結果頁：只做到「人格＋命定城市」文字展示，不含原始碼的海報產圖等待動畫／海報 Hero／
- * IG 限動分享／下載圖片（CLAUDE.md 核心約束：海報全鏈路不做）。
- * 原本 else 分支（`shareImageV2` 非 Ready 時的 fallback 文字內容）現在變成唯一內容分支。
+ * 測驗結果頁（T20：恢復沈浸式海報完整版）。
+ * hero 就緒（[ShareImageV2State.Ready]）時走沈浸式版面：hero 滿版無 padding、往上頂到狀態列下方
+ * （此時根 Box 不能吃 [Modifier.statusBarsPadding]，否則頂部會多一截留白）；hero 底部疊黑色半透明
+ * 資訊卡（目的地＋tagline＋stamp 圓圖），下方接 tag 圓圖列＋既有推薦理由／分享文案卡。
+ * hero 未就緒（Idle/Loading/Failed）維持 T19 的簡化文字展示 fallback（原始碼「無海報」分支）。
  */
 @Composable
 internal fun ResultScreen(
@@ -107,14 +120,29 @@ internal fun ResultScreen(
     val shareImageV2 by viewModel.shareImageV2State.collectAsStateWithLifecycle()
     var showBottomSheet by remember { mutableStateOf(false) }
     val shareText = rememberShareText()
+    val shareImageToInstagramStory = rememberShareImageToInstagramStory()
+    val openUrl = rememberOpenUrl()
+    val clipboardManager = LocalClipboardManager.current
+    val scope = rememberCoroutineScope()
+    // 分享／分享到 IG 限時動態用：截「Hero + 黑色資訊卡」容器當下畫面的截圖，而非重新下載 hero URL，
+    // 確保分享出去的圖跟畫面上看到的一致（比照原始碼做法，見任務 brief）；未就緒時這個 layer 沒錄到內容，
+    // 分享按鈕會直接退回純文字分享（見下方 onShareToInstagramStories）
+    val shareableGraphicsLayer = rememberGraphicsLayer()
+    // 分享文案：優先用後端 social_post，空則退回人格＋命定城市句型（BottomSheet「分享我的旅行 DNA」
+    // 與「分享到 IG 限時動態」共用同一句）
+    val shareCaption = result?.socialPost.orEmpty().ifBlank {
+        if (result != null) "我的旅行人格是${result.travelIdentity}，命定城市是${result.destinationCn}！" else "" // TODO: i18n
+    }
+
+    val isPosterReady = shareImageV2 is ShareImageV2State.Ready
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .testTag("companion_result_screen")
             .background(Tokens.colorWhite)
-            // 標題直接貼齊畫面頂端會被瀏海／動態島遮住，整頁內容退到狀態列下方
-            .statusBarsPadding(),
+            // 沈浸式 hero 需要頂到狀態列下方；其餘狀態（含 hero 尚未就緒）維持退到狀態列下方，避免標題被瀏海遮住
+            .then(if (isPosterReady) Modifier else Modifier.statusBarsPadding()),
     ) {
         when {
             analysis is AnalysisState.SoftFailed || analysis is AnalysisState.Error -> {
@@ -149,80 +177,98 @@ internal fun ResultScreen(
             }
 
             else -> {
-                // 人格 + 命定城市展示（原始碼「無海報」fallback 分支，現為唯一內容路徑）
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState()),
-                ) {
-                    // T19：海報 hero 圖很慢（約 80 秒），文字內容不等它顯示——Failed/Idle 不佔版位，
-                    // Loading 顯示輕量佔位，Ready 才補上圖，版面不會因為缺圖而破
-                    ShareImageV2HeroContent(shareImageV2)
-                    if (shareImageV2 != ShareImageV2State.Idle && shareImageV2 != ShareImageV2State.Failed) {
-                        Spacer(Modifier.height(Tokens.spacing200))
-                    }
-
-                    Box(
+                val currentShareImageV2 = shareImageV2
+                if (currentShareImageV2 is ShareImageV2State.Ready) {
+                    // 沈浸式版面：hero 滿版頂到狀態列下方，內容依序往下排列（不疊加），下方接 tag 圓圖列／
+                    // 既有推薦理由卡；不再重複顯示目的地/tagline（hero 上的黑色資訊卡已經有）
+                    val shareResult = currentShareImageV2.result
+                    Column(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(Tokens.spacing300),
-                        contentAlignment = Alignment.Center,
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState()),
                     ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                result?.travelIdentity.orEmpty(),
-                                fontWeight = FontWeight(Tokens.fontWeightBold),
-                                fontSize = Tokens.fontSize6,
-                                color = Tokens.colorTextPrimaryDark,
-                                textAlign = TextAlign.Center,
-                            )
-                            Spacer(Modifier.height(Tokens.spacing150))
-                            Text(
-                                "${result?.destinationCn.orEmpty()} · ${result?.destinationCountry.orEmpty()}",
-                                color = Tokens.colorTextDark,
-                                fontSize = Tokens.fontSize3,
-                            )
-                            Spacer(Modifier.height(Tokens.spacing200))
-                            Text(
-                                result?.companionQuote?.ifBlank { result.recommendation.firstOrNull().orEmpty() }.orEmpty(),
-                                color = Tokens.colorTextMedium,
-                                fontSize = Tokens.fontSize3,
-                                textAlign = TextAlign.Center,
+                        Box(
+                            modifier = Modifier.drawWithContent {
+                                shareableGraphicsLayer.record { this@drawWithContent.drawContent() }
+                                drawLayer(shareableGraphicsLayer)
+                            },
+                        ) {
+                            ImmersiveShareHeroWithBadge(
+                                heroUrl = shareResult.heroUrl.orEmpty(),
+                                content = shareResult.content,
+                                stampUrl = shareResult.stampUrl,
                             )
                         }
+                        Spacer(Modifier.height(Tokens.spacing200))
+                        ShareImageV2TagIconsRow(content = shareResult.content, tagIconUrls = shareResult.tagIconUrls)
+                        CompanionResultHighlightContent(
+                            result = result,
+                            showDestinationAndTagline = false,
+                            // tag 圓圖列已經取代這排純文字 chip（任務規格第 3 點）
+                            showHighlightTagPills = false,
+                        )
+                        CompanionResultDetailsContent(result = result, bottomSafeArea = 96.dp)
                     }
+                } else {
+                    // 人格 + 命定城市展示（原始碼「無海報」fallback 分支，hero 尚未就緒時的內容路徑）
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState()),
+                    ) {
+                        // T19：海報 hero 圖很慢（約 80 秒），文字內容不等它顯示——Failed/Idle 不佔版位，
+                        // Loading 顯示輕量佔位，版面不會因為缺圖而破
+                        ShareImageV2HeroContent(shareImageV2)
+                        if (shareImageV2 != ShareImageV2State.Idle && shareImageV2 != ShareImageV2State.Failed) {
+                            Spacer(Modifier.height(Tokens.spacing200))
+                        }
 
-                    CompanionResultHighlightContent(result = result)
-                    CompanionResultDetailsContent(result = result, bottomSafeArea = 96.dp)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(Tokens.spacing300),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    result?.travelIdentity.orEmpty(),
+                                    fontWeight = FontWeight(Tokens.fontWeightBold),
+                                    fontSize = Tokens.fontSize6,
+                                    color = Tokens.colorTextPrimaryDark,
+                                    textAlign = TextAlign.Center,
+                                )
+                                Spacer(Modifier.height(Tokens.spacing150))
+                                Text(
+                                    "${result?.destinationCn.orEmpty()} · ${result?.destinationCountry.orEmpty()}",
+                                    color = Tokens.colorTextDark,
+                                    fontSize = Tokens.fontSize3,
+                                )
+                                Spacer(Modifier.height(Tokens.spacing200))
+                                Text(
+                                    result?.companionQuote?.ifBlank { result.recommendation.firstOrNull().orEmpty() }.orEmpty(),
+                                    color = Tokens.colorTextMedium,
+                                    fontSize = Tokens.fontSize3,
+                                    textAlign = TextAlign.Center,
+                                )
+                            }
+                        }
+
+                        CompanionResultHighlightContent(result = result)
+                        CompanionResultDetailsContent(result = result, bottomSafeArea = 96.dp)
+                    }
                 }
 
-                // 底部雙按鈕：純文字分享（T15 才接 shareText）＋更多動作（開啟導覽選單）
-                Row(
+                // 底部單顆「更多動作」按鈕：兩種版面共用（原版 Ready／fallback 兩分支皆為單顆按鈕，見任務規格第 4 點，
+                // 「分享我的旅行 DNA」搬進 BottomSheet 第 2 項）
+                Box(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .fillMaxWidth()
                         .background(Tokens.colorWhite)
                         .navigationBarsPadding()
                         .padding(horizontal = Tokens.spacing300, vertical = Tokens.spacing200),
-                    horizontalArrangement = Arrangement.spacedBy(Tokens.spacing150),
                 ) {
-                    Box(Modifier.weight(1f).testTag("companion_result_share_btn")) {
-                        AppButton(
-                            buttonText = "分享我的旅行 DNA", // TODO: i18n
-                            buttonType = ButtonType.PRIMARY_SUBTLE,
-                            buttonState = ButtonState.ENABLED,
-                            buttonSizeType = ButtonSizeType.Lg,
-                            isFullWidth = true,
-                            onClick = {
-                                // 分享文字用結果頁現有文案風格組出人格稱號＋命定城市
-                                shareText(
-                                    "我的旅行人格是${result?.travelIdentity.orEmpty()}，" +
-                                        "命定城市是${result?.destinationCn.orEmpty()}！", // TODO: i18n
-                                )
-                            },
-                        )
-                    }
-                    Box(Modifier.weight(1f).testTag("companion_result_more_actions_btn")) {
+                    Box(Modifier.testTag("companion_result_more_actions_btn")) {
                         AppButton(
                             buttonText = "更多動作", // TODO: i18n
                             buttonType = ButtonType.PRIMARY,
@@ -236,8 +282,8 @@ internal fun ResultScreen(
             }
         }
 
-        // BottomSheet：導覽選單（繼續規劃／看其他人／回到旅伴），移除原本的分享圖片/IG限動/下載圖片/探索行程列
-        // （皆依附海報 bitmap，海報鏈路整段不做，見 migration/02-ledger.md）
+        // BottomSheet：繼續規劃／分享我的旅行 DNA／分享到 IG 限時動態／搜尋相關產品／看其他人／回到旅伴
+        // （新排序見任務規格第 5 點；查看完整測驗結果/下載圖片列沿用既有定案不顯示）
         if (showBottomSheet) {
             ResultActionsBottomSheet(
                 result = result,
@@ -257,6 +303,31 @@ internal fun ResultScreen(
                     showBottomSheet = false
                     onStartPlanning()
                 },
+                onShareDna = {
+                    showBottomSheet = false
+                    shareText(shareCaption)
+                },
+                onShareToInstagramStories = {
+                    showBottomSheet = false
+                    // IG 限動不支援帶入文字文案，點擊當下先複製文案到剪貼簿方便貼上（原版行為）；
+                    // commonMain 沒有 Toast，這裡先省略提示（見任務報告）
+                    if (shareCaption.isNotBlank()) clipboardManager.setText(AnnotatedString(shareCaption))
+                    val readyResult = shareImageV2 as? ShareImageV2State.Ready
+                    if (readyResult != null) {
+                        scope.launch {
+                            val bitmap = shareableGraphicsLayer.toImageBitmap()
+                            val shared = shareImageToInstagramStory(bitmap, shareCaption)
+                            if (!shared) shareText(shareCaption)
+                        }
+                    } else {
+                        // hero 還沒就緒，沒有畫面可截，直接退回純文字分享
+                        shareText(shareCaption)
+                    }
+                },
+                onSearchProducts = {
+                    showBottomSheet = false
+                    openUrl(kkdayDestinationSearchUrl(result?.destinationCn.orEmpty()))
+                },
                 onViewOthers = {
                     showBottomSheet = false
                     onViewOthers()
@@ -266,9 +337,14 @@ internal fun ResultScreen(
     }
 }
 
+/** 「搜尋相關產品」深連結（migration/research-ota-product-apis.md 定調的「真深連結」做法，不接 App 內搜尋結果頁）。 */
+private fun kkdayDestinationSearchUrl(keyword: String): String =
+    "https://www.kkday.com/zh-tw/search?keyword=${keyword.encodeURLParameter()}"
+
 /**
- * 海報 hero 圖（T19）：Loading 顯示輕量佔位（不是 shimmer，demo 未移植那套元件，見
- * CompanionRootScreen 對 CompanionAsyncImage 的說明）；Failed/Idle 不佔版面直接跳過。
+ * 海報 hero 圖（hero 尚未就緒時的 fallback 版面用）：Loading 顯示輕量佔位（不是 shimmer，demo 未移植
+ * 那套元件，見 CompanionRootScreen 對 CompanionAsyncImage 的說明）；Failed/Idle 不佔版面直接跳過。
+ * hero 就緒（Ready）改由 [ImmersiveShareHeroWithBadge] 處理沈浸式版面，這裡的 Ready 分支不會被呼叫到。
  *
  * 比例固定 [HERO_ASPECT_RATIO]：後端 hero 是 IG 限動規格的直式長圖（實測 1536x2752／1152x2048），
  * 用固定高度的橫幅框會 centerCrop 只露出中間一條（原版 SixZonePosterSpec 也特別註明 hero 要完整
@@ -292,25 +368,118 @@ private fun ShareImageV2HeroContent(state: ShareImageV2State) {
             }
         }
 
-        is ShareImageV2State.Ready -> {
-            CompanionAsyncImage(
-                url = state.heroUrl,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = Tokens.spacing300)
-                    .clip(RoundedCornerShape(Tokens.radiusLg))
-                    .testTag("companion_result_hero_image"),
-                placeholderAspectRatio = HERO_ASPECT_RATIO,
-                blurInOnLoad = true,
-            )
-        }
-
+        is ShareImageV2State.Ready -> Unit
         ShareImageV2State.Idle, ShareImageV2State.Failed -> Unit
     }
 }
 
 /** 後端 hero 圖是 9:16 直式（IG 限動規格） */
 private const val HERO_ASPECT_RATIO = 9f / 16f
+
+/**
+ * 沈浸式 hero：滿版無左右 padding、無圓角（呼叫端 [ResultScreen] 也拿掉了根 Box 的 statusBarsPadding），
+ * 讓圖片往上頂到狀態列下方；底部疊一層黑色半透明資訊卡（目的地＋tagline 白字 + 目的地 stamp 圓圖），
+ * 比照原始碼 `PosterHeroWithBadge`（reference SixZonePosterComposer.kt:161-224），
+ * 只是把浮動圓角卡片改成貼齊 hero 邊緣的滿版長條，呼應「沈浸式」的滿版訴求。
+ */
+@Composable
+private fun ImmersiveShareHeroWithBadge(
+    heroUrl: String,
+    content: ShareImageV2Content,
+    stampUrl: String?,
+) {
+    Box(modifier = Modifier.fillMaxWidth()) {
+        CompanionAsyncImage(
+            url = heroUrl,
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("companion_result_hero_image"),
+            placeholderAspectRatio = HERO_ASPECT_RATIO,
+            blurInOnLoad = true,
+        )
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxWidth()
+                .background(Color.Black.copy(alpha = 0.4f))
+                .padding(horizontal = Tokens.spacing300, vertical = Tokens.spacing200)
+                .testTag("companion_result_hero_badge"),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    listOf(content.destinationCn, content.destinationEn).filter { it.isNotBlank() }.joinToString(" · "),
+                    color = Color.White,
+                    fontWeight = FontWeight(Tokens.fontWeightBold),
+                    fontSize = Tokens.fontSize5,
+                    modifier = Modifier.testTag("companion_result_hero_destination"),
+                )
+                if (content.tagline.isNotBlank()) {
+                    Spacer(Modifier.height(Tokens.spacing050))
+                    Text(
+                        content.tagline,
+                        color = Color.White.copy(alpha = 0.85f),
+                        fontSize = Tokens.fontSize2,
+                    )
+                }
+            }
+            if (!stampUrl.isNullOrBlank()) {
+                Spacer(Modifier.width(Tokens.spacing200))
+                CompanionAsyncImage(
+                    url = stampUrl,
+                    modifier = Modifier
+                        .size(64.dp)
+                        .clip(CircleShape)
+                        .testTag("companion_result_hero_stamp"),
+                )
+            }
+        }
+    }
+}
+
+/**
+ * highlight_tags 三個標籤配 decorations.tag_icon_urls 三張圓圖一起顯示（任務規格第 3 點），
+ * 取代原本 [CompanionResultHighlightContent] 那排純文字 chip；圓形白框比照 SixZonePosterSpec
+ * （reference Live 版原本刻意不加框，這裡改回加框是本次需求的決定，見任務報告）。
+ * tagIconUrls 為空（decorations 缺漏）時整排不顯示，不影響其餘版面。
+ */
+@Composable
+private fun ShareImageV2TagIconsRow(content: ShareImageV2Content, tagIconUrls: List<String>) {
+    // 全部缺圖（list 空或全為 null 佔位的空字串）才整排不顯示；部分缺圖時保留佔位圓維持與標籤對位
+    if (tagIconUrls.none { it.isNotBlank() }) return
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = Tokens.spacing300, vertical = Tokens.spacing100)
+            .testTag("companion_result_tag_icons"),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+    ) {
+        tagIconUrls.forEachIndexed { index, url ->
+            val tag = content.highlightTags.getOrNull(index).orEmpty()
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                CompanionAsyncImage(
+                    url = url,
+                    modifier = Modifier
+                        .size(72.dp)
+                        .clip(CircleShape)
+                        .border(2.dp, Tokens.colorWhite, CircleShape)
+                        .background(Tokens.colorBackgroundPrimaryLighter)
+                        .testTag("companion_result_tag_icon_$index"),
+                )
+                if (tag.isNotBlank()) {
+                    Spacer(Modifier.height(Tokens.spacing050))
+                    Text(
+                        tag,
+                        fontSize = Tokens.fontSize1,
+                        color = Tokens.colorTextDarker,
+                        textAlign = TextAlign.Center,
+                        maxLines = 1,
+                    )
+                }
+            }
+        }
+    }
+}
 
 /**
  * 統一的旅伴讀取畫面：頭像 + 名字 + 主標題 + 副標題 + 三點漸變輪播。
@@ -402,14 +571,16 @@ private fun LoadingDotsRow() {
 
 /**
  * 旅行人格/tag 標籤——即「推薦理由」以上的區塊。
- * [showDestinationAndTagline]：原始碼 v2 海報路徑會關閉此參數避免與海報 Hero 上的資訊重複；
- * 本檔沒有海報 Hero，呼叫端一律開啟。
+ * [showDestinationAndTagline]：hero 沈浸式版面會關閉此參數避免與 hero 上的黑色資訊卡重複顯示。
+ * [showHighlightTagPills]：hero 沈浸式版面改用 [ShareImageV2TagIconsRow]（tag 圓圖）取代這排純文字
+ * chip，此時關閉避免重複；其餘呼叫端（hero 未就緒的 fallback／回顧詳情頁）維持顯示。
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun CompanionResultHighlightContent(
     result: QuizCompletionResult?,
     showDestinationAndTagline: Boolean = true,
+    showHighlightTagPills: Boolean = true,
 ) {
     val highlightTags = result?.highlightTags.orEmpty()
 
@@ -455,7 +626,7 @@ internal fun CompanionResultHighlightContent(
             )
             Spacer(Modifier.height(Tokens.spacing100))
         }
-        if (highlightTags.isNotEmpty()) {
+        if (showHighlightTagPills && highlightTags.isNotEmpty()) {
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(Tokens.spacing100, Alignment.CenterHorizontally),
                 verticalArrangement = Arrangement.spacedBy(Tokens.spacing100),
@@ -523,9 +694,10 @@ internal fun CompanionResultDetailsContent(
 }
 
 /**
- * 導覽選單 bottom sheet：原始碼還包含「分享我的旅行 DNA」「分享到 IG 限時動態」「下載到我的裝置」
- * 「探索 {destination} 行程」四列，皆依附海報 bitmap／SearchResultRouter，海報全鏈路不做故整段移除，
- * 只保留與海報無關的導覽項目。
+ * 導覽選單 bottom sheet（T20 恢復完整版）：繼續規劃／分享我的旅行 DNA／分享到 IG 限時動態／
+ * 搜尋相關產品（任務規格第 5 點新增前 4 項排序）＋既有的看其他人／查看完整測驗結果／回到旅伴／
+ * 回到回顧列表／刪除紀錄（相對順序不變，見任務 brief）。「下載到我的裝置」原始碼依附海報 bitmap
+ * 且本專案不落地存檔，維持不做。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -537,6 +709,9 @@ private fun ResultActionsBottomSheet(
     showViewDetail: Boolean = true,
     showGoHome: Boolean = true,
     onContinuePlanning: (() -> Unit)? = null,
+    onShareDna: (() -> Unit)? = null,
+    onShareToInstagramStories: (() -> Unit)? = null,
+    onSearchProducts: (() -> Unit)? = null,
     onViewOthers: (() -> Unit)? = null,
     onBackToList: (() -> Unit)? = null,
     onDeleteRecord: (() -> Unit)? = null,
@@ -552,7 +727,7 @@ private fun ResultActionsBottomSheet(
         dragHandle = { DragHandle() },
         scrimColor = Color.Black.copy(alpha = 0.5f),
     ) {
-        // 依 Phase 1 mockup 定案版排序，列與列之間加分隔線
+        // 依任務規格第 5 點排序，列與列之間加分隔線
         val rows = buildList<@Composable () -> Unit> {
             if (onContinuePlanning != null) {
                 add {
@@ -564,6 +739,40 @@ private fun ResultActionsBottomSheet(
                         testTag = "companion_action_continue_planning",
                         hero = true,
                         onClick = onContinuePlanning,
+                    )
+                }
+            }
+            if (onShareDna != null) {
+                add {
+                    ActionRow(
+                        icon = painterResource(Res.drawable.ic_share_android_line),
+                        title = "分享我的旅行 DNA", // TODO: i18n
+                        description = "分享給好友或其他社群", // TODO: i18n
+                        testTag = "companion_action_share_dna",
+                        onClick = onShareDna,
+                    )
+                }
+            }
+            if (onShareToInstagramStories != null) {
+                add {
+                    ActionRow(
+                        // TODO: 尚未有專屬 IG 限動 icon，暫沿用既有分享 icon，待設計提供後替換
+                        icon = painterResource(Res.drawable.ic_share_android_line),
+                        title = "分享到 IG 限時動態", // TODO: i18n
+                        description = "一鍵貼到限動", // TODO: i18n
+                        testTag = "companion_action_share_ig_stories",
+                        onClick = onShareToInstagramStories,
+                    )
+                }
+            }
+            if (onSearchProducts != null) {
+                add {
+                    ActionRow(
+                        icon = painterResource(Res.drawable.ic_road_map_line),
+                        title = "搜尋相關產品", // TODO: i18n
+                        description = "到 KKday 逛逛這裡的行程與票券", // TODO: i18n
+                        testTag = "companion_action_search_products",
+                        onClick = onSearchProducts,
                     )
                 }
             }
@@ -781,7 +990,7 @@ internal fun ResultDetailScreen(
             Spacer(Modifier.height(Tokens.spacing200))
 
             // T19：hero 圖 ready 就顯示；否則（Loading/Failed/Idle）沿用命定城市文字佔位，版面不破
-            val heroUrl = (shareImageV2 as? ShareImageV2State.Ready)?.heroUrl
+            val heroUrl = (shareImageV2 as? ShareImageV2State.Ready)?.result?.heroUrl
             if (heroUrl != null) {
                 CompanionAsyncImage(
                     url = heroUrl,

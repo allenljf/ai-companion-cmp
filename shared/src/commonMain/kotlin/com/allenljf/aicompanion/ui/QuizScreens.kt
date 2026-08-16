@@ -1052,7 +1052,7 @@ private fun HomeIntentCard(
     }
 }
 
-/** 旅伴主頁「我的旅程」小卡：城市縮圖占位＋行程名，點擊直達成果頁（純本地資料，後端不儲存）。 */
+/** 旅伴主頁「我的旅程」小卡：行程情境圖（hero_image_url）＋行程名，點擊直達成果頁（純本地資料，後端不儲存）。 */
 @Composable
 private fun SavedTripCard(trip: SavedTripRecord, onClick: () -> Unit) {
     Column(
@@ -1068,7 +1068,7 @@ private fun SavedTripCard(trip: SavedTripRecord, onClick: () -> Unit) {
             modifier = Modifier
                 .fillMaxWidth()
                 .height(92.dp)
-                // 城市縮圖占位：場景圖 API 尚未提供
+                // 無圖／載入失敗時的漸層占位
                 .background(
                     Brush.verticalGradient(
                         listOf(
@@ -1078,6 +1078,11 @@ private fun SavedTripCard(trip: SavedTripRecord, onClick: () -> Unit) {
                     ),
                 ),
         ) {
+            CompanionAsyncImage(
+                url = trip.heroImageUrl,
+                modifier = Modifier.matchParentSize(),
+                contentScale = ContentScale.Crop,
+            )
             Text(
                 "共 ${trip.totalDays} 天", // TODO: i18n
                 fontSize = Tokens.fontSize1,

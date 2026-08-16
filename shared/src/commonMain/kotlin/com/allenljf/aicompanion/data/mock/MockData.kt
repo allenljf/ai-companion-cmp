@@ -11,6 +11,7 @@ import com.allenljf.aicompanion.model.QuizQuestion
 import com.allenljf.aicompanion.model.QuizResult
 import com.allenljf.aicompanion.model.RecommendCityResult
 import com.allenljf.aicompanion.model.SelfIntroductionResult
+import com.allenljf.aicompanion.model.ShareImageV2Content
 import com.allenljf.aicompanion.model.TravelDestinationOption
 import com.allenljf.aicompanion.model.TravelGuideDay
 import com.allenljf.aicompanion.model.TravelGuideDayItem
@@ -55,6 +56,31 @@ object MockData {
     // 用一張真實可載入的圖示意 hero 效果即可（見實測回應 scratchpad/sdd/share-image-v2-response.json）
     const val SHARE_IMAGE_HERO_URL: String =
         "https://storage.googleapis.com/ai-companion-assets-allenljf/share-v2/f930e62d0f460bdf3a550f319bca9dcd-hero.png"
+
+    // travel-guide 的行程情境圖固定假圖（實測回應的 hero_image_url），mock 不分城市共用同一張
+    const val TRAVEL_GUIDE_HERO_URL: String =
+        "https://storage.googleapis.com/ai-companion-assets-allenljf/guide-hero/cda9a889e9b5-37e5dbab.png"
+
+    // T20：沈浸式版面需要的 decorations + content，沿用同一組實測回應素材（見
+    // scratchpad/sdd/share-image-v2-response.json）；內容是示意文案，不隨 quizCompletion 的實際結果變動
+    // （mock 只在 useRemoteApi=false 時使用，demo 規模不值得為此多接一層狀態）
+    const val SHARE_IMAGE_STAMP_URL: String =
+        "https://storage.googleapis.com/ai-companion-assets-allenljf/share-v2/packs/dest/penang/stamp-48f28f91.png"
+
+    val SHARE_IMAGE_TAG_ICON_URLS: List<String> = listOf(
+        "https://storage.googleapis.com/ai-companion-assets-allenljf/share-v2/packs/tag/857365ff73b64a31-48f28f91.png",
+        "https://storage.googleapis.com/ai-companion-assets-allenljf/share-v2/packs/tag/179f48166d4a0457-48f28f91.png",
+        "https://storage.googleapis.com/ai-companion-assets-allenljf/share-v2/packs/tag/30987f9e5e3cec24-48f28f91.png",
+    )
+
+    val shareImageV2Content = ShareImageV2Content(
+        destinationCn = "檳城",
+        destinationEn = "Penang",
+        tagline = "舌尖與古蹟的奢華交會",
+        highlightTags = listOf("資深吃貨", "歷史文化迷", "寵自己沒在客氣"),
+        companionQuote = "準備好你的第二個胃，這次我們只吃最好的！",
+        companionName = "Kuma",
+    )
 
     // ============================================================
     // GET ai-partner
@@ -696,6 +722,7 @@ object MockData {
         ),
         progressLabel = "已排 3/3 天",
         mainActionLabel = "看看完整行程",
+        heroImageUrl = TRAVEL_GUIDE_HERO_URL,
         failReason = null,
     )
 
@@ -730,6 +757,7 @@ object MockData {
         ),
         progressLabel = "已排 3/3 天",
         mainActionLabel = "看看完整行程",
+        heroImageUrl = TRAVEL_GUIDE_HERO_URL,
         failReason = null,
     )
 
@@ -756,6 +784,7 @@ object MockData {
         ),
         progressLabel = "已排 2/2 天",
         mainActionLabel = "看看完整行程",
+        heroImageUrl = TRAVEL_GUIDE_HERO_URL,
         failReason = null,
     )
 
@@ -794,6 +823,7 @@ object MockData {
             ),
             progressLabel = "已排 2/2 天",
             mainActionLabel = "看看完整行程",
+            heroImageUrl = TRAVEL_GUIDE_HERO_URL,
             failReason = null,
         )
     }

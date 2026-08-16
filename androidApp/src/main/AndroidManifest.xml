@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- API 30+ 套件可見性：isInstagramInstalled 用 PackageManager.getPackageInfo 偵測 IG 有沒有裝，
+         沒宣告這個會恆回 false（見 platform/ShareImageToInstagramStory.android.kt） -->
+    <queries>
+        <package android:name="com.instagram.android" />
+    </queries>
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"

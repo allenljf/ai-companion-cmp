@@ -7,6 +7,7 @@ import com.allenljf.aicompanion.model.QuizCompletionResult
 import com.allenljf.aicompanion.model.QuizGalleryResult
 import com.allenljf.aicompanion.model.QuizResult
 import com.allenljf.aicompanion.model.SavedTripRecord
+import com.allenljf.aicompanion.model.ShareImageV2Result
 import com.allenljf.aicompanion.model.TravelDestinationOption
 import com.allenljf.aicompanion.model.TripProductCard
 
@@ -86,11 +87,12 @@ sealed interface QuizGalleryState {
 /**
  * 海報 hero 圖（T19）：不接輪詢，簡化版狀態機——測驗分析成功後在背景觸發一次，
  * 80 秒左右才會有結果，結果頁其餘內容不必等它（軟失敗契約：Failed 只代表無圖，其餘顯示不受影響）。
+ * T20：Ready 帶完整 [ShareImageV2Result]（不只 heroUrl），結果頁沈浸式版面需要 stamp/tag icon/文案。
  */
 sealed interface ShareImageV2State {
     data object Idle : ShareImageV2State
     data object Loading : ShareImageV2State
-    data class Ready(val heroUrl: String) : ShareImageV2State
+    data class Ready(val result: ShareImageV2Result) : ShareImageV2State
     data object Failed : ShareImageV2State
 }
 

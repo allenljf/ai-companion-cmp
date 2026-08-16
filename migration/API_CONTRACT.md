@@ -179,7 +179,10 @@ Base path 建議：`/api/companion/`（原本是 `/api/v3/companion/`）
   },
   "progress_label": "已排 3/3 天",
   "main_action": {"type": "view_trip", "label": "看看完整行程"},
-  "fail_reason": null
+  "ai_model": "gemini-3.6-flash",
+  "fail_reason": null,
+  // 行程情境圖：成果頁 hero 與「我的旅程」縮圖用；產圖失敗為 null（App 退回漸層占位）
+  "hero_image_url": "https://storage.googleapis.com/…/guide-hero/cda9a889e9b5-37e5dbab.png"
 }
 ```
 

@@ -444,9 +444,8 @@ class AiCompanionViewModel(
             fetchShareImageV2UseCase(completionUuid = uuid).fold(
                 onSuccess = { result ->
                     if (result.isReady) {
-                        val heroUrl = result.heroUrl.orEmpty()
-                        _shareImageV2State.value = ShareImageV2State.Ready(heroUrl)
-                        backfillQuizHistoryHeroUrl(uuid, heroUrl)
+                        _shareImageV2State.value = ShareImageV2State.Ready(result)
+                        backfillQuizHistoryHeroUrl(uuid, result.heroUrl.orEmpty())
                     } else {
                         _shareImageV2State.value = ShareImageV2State.Failed
                     }
@@ -1183,6 +1182,7 @@ class AiCompanionViewModel(
                             days = result.days,
                             // 偏好一併保存：回訪後繼續請旅伴修改時帶原偏好維持風格
                             preferences = lastPreferences,
+                            heroImageUrl = result.heroImageUrl,
                             createdAt = currentTimeMillis()
                         ),
                         messages = result.messages,

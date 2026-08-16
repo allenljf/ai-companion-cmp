@@ -103,16 +103,32 @@ data class QuizCompletionResult(
 }
 
 /**
- * share-image-v2 的顯示結果：後端同步回合成好的 hero PNG URL，不需要 reference 版的
- * status enum/輪詢/content/decorations（見 ApiModels.kt 註解，T19 只補顯示需要的最小集合）。
+ * share-image-v2 的顯示結果：後端同步回合成好的 hero PNG URL + 沈浸式版面需要的裝飾素材
+ * （stamp／tag icon）與文案內容（T20 恢復完整版；不需要 reference 版的 status enum/輪詢——
+ * 本專案不接輪詢，見 ApiModels.kt 註解）。
  */
 data class ShareImageV2Result(
     val heroUrl: String? = null,
+    val stampUrl: String? = null,
+    val tagIconUrls: List<String> = emptyList(),
+    val content: ShareImageV2Content = ShareImageV2Content(),
     val failReason: String? = null
 ) {
     // 軟失敗以 fail_reason 判斷；本專案不接輪詢，heroUrl 缺漏也視為失敗
     val isReady: Boolean get() = failReason.isNullOrEmpty() && !heroUrl.isNullOrBlank()
 }
+
+/** hero 疊字資訊卡＋tag 圓圖下方 hashtag 用的文案內容（share-image-v2 的 content 欄位）。 */
+data class ShareImageV2Content(
+    val travelIdentity: String = "",
+    val travelIdentityEn: String = "",
+    val destinationCn: String = "",
+    val destinationEn: String = "",
+    val tagline: String = "",
+    val highlightTags: List<String> = emptyList(),
+    val companionQuote: String = "",
+    val companionName: String = ""
+)
 
 data class QuizGalleryResult(
     val count: Int = 0,
@@ -380,6 +396,8 @@ data class TravelGuideResult(
     val progressLabel: String = "",
     // phase=done 時的收尾主行動文字（如「看看完整行程」）；未完成為 null
     val mainActionLabel: String? = null,
+    // 行程情境圖遠端 URL；後端產圖失敗為空字串，UI 退回漸層占位
+    val heroImageUrl: String = "",
     val failReason: String? = null
 ) {
     // 失敗仍回 HTTP 200：fail_reason 有值時 days=[]，UI 顯示重試
@@ -422,6 +440,8 @@ data class SavedTripRecord(
     val totalDays: Int = 0,
     val days: List<TravelGuideDay> = emptyList(),
     val preferences: Map<String, String> = emptyMap(),
+    // travel-guide 回的行程情境圖：一併持久化，回訪開啟成果頁／首頁縮圖都不必重打 API
+    val heroImageUrl: String = "",
     val createdAt: Long = 0L
 )
 

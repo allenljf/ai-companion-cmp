@@ -192,7 +192,7 @@ private fun SavedTripListItem(
             .testTag("companion_trip_list_item"),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // 城市縮圖占位（場景圖 API 尚未提供）
+        // 行程情境圖（hero_image_url）；無圖／載入失敗時退回漸層＋城市字縮圖
         Box(
             modifier = Modifier
                 .size(72.dp)
@@ -207,11 +207,17 @@ private fun SavedTripListItem(
                 ),
             contentAlignment = Alignment.Center,
         ) {
-            Text(
-                trip.city.take(2),
-                fontWeight = FontWeight(Tokens.fontWeightBold),
-                fontSize = Tokens.fontSize4,
-                color = Tokens.colorWhite,
+            CompanionAsyncImage(
+                url = trip.heroImageUrl,
+                modifier = Modifier.matchParentSize(),
+                placeholder = {
+                    Text(
+                        trip.city.take(2),
+                        fontWeight = FontWeight(Tokens.fontWeightBold),
+                        fontSize = Tokens.fontSize4,
+                        color = Tokens.colorWhite,
+                    )
+                },
             )
         }
         Spacer(Modifier.width(Tokens.spacing150))

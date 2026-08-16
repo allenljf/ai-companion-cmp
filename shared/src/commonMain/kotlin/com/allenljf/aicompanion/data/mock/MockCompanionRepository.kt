@@ -79,7 +79,14 @@ class MockCompanionRepository(private val localStore: LocalCompanionStore) : Com
         if (CompanionMockConfig.forceFailReason) {
             return Result.success(ShareImageV2Result(failReason = "llm_error"))
         }
-        return Result.success(ShareImageV2Result(heroUrl = MockData.SHARE_IMAGE_HERO_URL))
+        return Result.success(
+            ShareImageV2Result(
+                heroUrl = MockData.SHARE_IMAGE_HERO_URL,
+                stampUrl = MockData.SHARE_IMAGE_STAMP_URL,
+                tagIconUrls = MockData.SHARE_IMAGE_TAG_ICON_URLS,
+                content = MockData.shareImageV2Content,
+            )
+        )
     }
 
     override suspend fun getQuizGallery(): Result<QuizGalleryResult> {
