@@ -1670,7 +1670,7 @@ private fun CompanionHistoryDetailContent(
                         destinationCn = record.result.destinationCn,
                         destinationEn = record.result.destinationEn,
                         tagline = record.result.tagline,
-                        stampUrl = null,
+                        stampUrl = record.stampImageUrl,
                     )
                 }
                 HistoryDetailCloseButton(

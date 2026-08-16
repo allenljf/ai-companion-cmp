@@ -184,6 +184,8 @@ data class QuizHistoryRecord(
     val completionUuid: String = "",
     // T19：後端產好的 hero 圖遠端 URL，share-image-v2 成功後回填，回顧列表/詳情頁可直接顯示不必重打（35 秒）
     val heroImageUrl: String = "",
+    // 同上一併回填的目的地 stamp 圓圖 URL；沒回填過為空字串，詳情頁退回內建 generic fallback icon
+    val stampImageUrl: String = "",
     val createdAt: Long = 0L
 )
 

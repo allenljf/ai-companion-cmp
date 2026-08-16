@@ -29,6 +29,9 @@ import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.logging.LogLevel
+import io.ktor.client.plugins.logging.Logger
+import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.plugins.timeout
 import io.ktor.client.request.get
 import io.ktor.client.request.post
@@ -217,5 +220,16 @@ private fun createHttpClient(): HttpClient = HttpClient {
         requestTimeoutMillis = REQUEST_TIMEOUT_MILLIS
         connectTimeoutMillis = REQUEST_TIMEOUT_MILLIS
         socketTimeoutMillis = REQUEST_TIMEOUT_MILLIS
+    }
+    // repository 層一律 runCatching 收斂成軟失敗（UI 不顯示錯誤），失敗原因不會浮到 logcat／Xcode
+    // console；沒有這個插件時 API 出錯只能看到「畫面沒東西」而查不出為什麼。Android 用 logcat
+    // 過濾 tag「CompanionApi」、iOS 看 Xcode console。
+    install(Logging) {
+        level = LogLevel.ALL
+        logger = object : Logger {
+            override fun log(message: String) {
+                println("CompanionApi: $message")
+            }
+        }
     }
 }
