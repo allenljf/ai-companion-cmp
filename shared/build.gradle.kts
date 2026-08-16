@@ -67,6 +67,9 @@ kotlin {
             implementation(libs.multiplatform.settings)
             implementation(libs.multiplatform.settings.serialization)
             implementation(libs.multiplatform.settings.no.arg)
+            implementation(libs.coil.compose)
+            // 用 coil3 的 ktor3 fetcher，沿用專案既有的 Ktor engine（android=okhttp/ios=darwin），不另加 engine
+            implementation(libs.coil.network.ktor3)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

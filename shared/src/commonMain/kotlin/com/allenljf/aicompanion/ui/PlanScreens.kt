@@ -80,20 +80,6 @@ internal object CompanionPlanFeatureFlags {
 
 // ---------- 共用元件 ----------
 
-/** 旅伴頭像佔位：無圖片載入實作，先用單色圓底＋「?」字樣頂位。 */
-@Composable
-private fun PlanAvatarPlaceholder(size: androidx.compose.ui.unit.Dp) {
-    Box(
-        modifier = Modifier
-            .size(size)
-            .clip(CircleShape)
-            .background(Tokens.colorBackgroundPrimaryLighter), // TODO: image loading
-        contentAlignment = Alignment.Center,
-    ) {
-        Text("?", color = Tokens.colorTextPrimaryDark)
-    }
-}
-
 /** 規劃對話頂列（56dp）：返回＋旅伴頭像＋標題。 */
 @Composable
 internal fun PlanTopBar(
@@ -117,7 +103,14 @@ internal fun PlanTopBar(
                 tint = Tokens.colorTextDarker,
             )
         }
-        PlanAvatarPlaceholder(size = 30.dp)
+        CompanionAsyncImage(
+            url = avatarUrl,
+            modifier = Modifier
+                .size(30.dp)
+                .clip(CircleShape)
+                .background(Tokens.colorBackgroundPrimaryLighter),
+            placeholder = { Text("?", color = Tokens.colorTextPrimaryDark) },
+        )
         Spacer(Modifier.width(Tokens.spacing100))
         Text(
             title,
@@ -148,7 +141,14 @@ internal fun PlanChatBubble(
         verticalAlignment = Alignment.Top,
     ) {
         if (!fromMe) {
-            PlanAvatarPlaceholder(size = 28.dp)
+            CompanionAsyncImage(
+                url = avatarUrl,
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(CircleShape)
+                    .background(Tokens.colorBackgroundPrimaryLighter),
+                placeholder = { Text("?", color = Tokens.colorTextPrimaryDark) },
+            )
             Spacer(Modifier.width(Tokens.spacing100))
         }
         Box(

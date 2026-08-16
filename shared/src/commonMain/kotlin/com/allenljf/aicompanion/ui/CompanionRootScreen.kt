@@ -1,5 +1,8 @@
 package com.allenljf.aicompanion.ui
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,15 +22,23 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil3.compose.AsyncImagePainter
+import coil3.compose.LocalPlatformContext
+import coil3.compose.rememberAsyncImagePainter
+import coil3.request.ImageRequest
 import com.allenljf.aicompanion.model.QuizGalleryItem
 import com.allenljf.aicompanion.theme.Tokens
 import com.allenljf.aicompanion.ui.components.ButtonSizeType
@@ -427,11 +438,20 @@ internal fun PrimaryButton(
     }
 }
 
+// 記錄已經跑過模糊轉清晰動畫的圖片網址：同一張圖從其他頁 back 回來時直接顯示清晰圖，不重播動畫
+// （對齊 reference AiCompanionScreens.kt 的 blurAnimatedUrls；存活範圍等同當次 App 進程）。
+private val blurAnimatedUrls = mutableSetOf<String>()
+private const val BLUR_IN_DURATION_MS = 2000
+private val BLUR_IN_START_RADIUS = 20.dp
+
 /**
- * 統一的旅伴/題目圖片載入元件：無 Coil 移植，一律顯示 [placeholder]（不判斷載入中/失敗狀態）。
- * 保留原簽章（url/blurInOnLoad/loadingContent/errorContent 等）讓所有呼叫點原樣搬移不用改，
- * 未使用的參數留著純粹是相容性佔位。
- * TODO: image loading — 之後要接真圖再實作 loadingContent/errorContent 分支。
+ * 統一的旅伴/題目圖片載入元件，Coil 3 實作（對齊 reference AiCompanionScreens.kt 的行為語意）：
+ * - 沒有 URL：顯示 [placeholder]
+ * - 載入中：[loadingContent] ?: [placeholder]（原版預設是 shimmer，demo 未移植 shimmer 元件，
+ *   loading 態直接退回 placeholder，差異見 T18 report）
+ * - 載入失敗：[errorContent]（附 retry callback，改變 retryAttempt 觸發 Coil 重新載入）?: [placeholder]
+ * - 載入成功：顯示圖片；[blurInOnLoad] 時第一次載入完成從模糊漸變清晰，之後同張圖直接顯示清晰圖
+ * - [placeholderAspectRatio]：載入中先以此比例佔位，成功後改用圖片實際比例撐高度
  */
 @Composable
 internal fun CompanionAsyncImage(
@@ -445,9 +465,58 @@ internal fun CompanionAsyncImage(
     loadingContent: (@Composable () -> Unit)? = null,
     errorContent: (@Composable (retry: () -> Unit) -> Unit)? = null,
 ) {
-    val sizedModifier = placeholderAspectRatio?.let { modifier.aspectRatio(it) } ?: modifier
-    Box(modifier = sizedModifier, contentAlignment = Alignment.Center) {
-        placeholder()
+    if (url.isEmpty()) {
+        val emptyModifier = placeholderAspectRatio?.let { modifier.aspectRatio(it) } ?: modifier
+        Box(modifier = emptyModifier, contentAlignment = Alignment.Center) { placeholder() }
+        return
+    }
+
+    // retryAttempt 改變 → memoryCacheKeyExtra 改變 → ImageRequest 身分不同 → Coil 重新發起載入
+    // （Coil 3 拿掉了 Coil 2 的 setParameter API，改用 cache key extras 達到同樣的「換身分強制重載」效果）
+    var retryAttempt by remember(url) { mutableIntStateOf(0) }
+    val painter = rememberAsyncImagePainter(
+        model = ImageRequest.Builder(LocalPlatformContext.current)
+            .data(url)
+            .memoryCacheKeyExtra("companion_retry", retryAttempt.toString())
+            .build(),
+        contentScale = contentScale,
+    )
+    val state by painter.state.collectAsState()
+    val shouldBlurIn = blurInOnLoad && url !in blurAnimatedUrls
+    val blurRadius = remember(url) { Animatable(if (shouldBlurIn) BLUR_IN_START_RADIUS.value else 0f) }
+    LaunchedEffect(state, url) {
+        if (shouldBlurIn && state is AsyncImagePainter.State.Success) {
+            blurRadius.animateTo(0f, animationSpec = tween(BLUR_IN_DURATION_MS))
+            blurAnimatedUrls.add(url)
+        }
+    }
+    val sizedModifier = if (placeholderAspectRatio != null) {
+        val intrinsicRatio = (state as? AsyncImagePainter.State.Success)
+            ?.painter?.intrinsicSize
+            ?.takeIf { it.height > 0f && it.width > 0f }
+            ?.let { it.width / it.height }
+        modifier.aspectRatio(intrinsicRatio ?: placeholderAspectRatio)
+    } else {
+        modifier
+    }
+    Box(modifier = sizedModifier) {
+        if (state is AsyncImagePainter.State.Error) {
+            Box(modifier = Modifier.matchParentSize(), contentAlignment = Alignment.Center) {
+                errorContent?.invoke { retryAttempt++ } ?: placeholder()
+            }
+        } else {
+            Image(
+                painter = painter,
+                contentDescription = contentDescription,
+                contentScale = contentScale,
+                modifier = Modifier.matchParentSize().blur(blurRadius.value.dp),
+            )
+            if (state is AsyncImagePainter.State.Loading) {
+                Box(modifier = Modifier.matchParentSize(), contentAlignment = Alignment.Center) {
+                    loadingContent?.invoke() ?: placeholder()
+                }
+            }
+        }
     }
 }
 

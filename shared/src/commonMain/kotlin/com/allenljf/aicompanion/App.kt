@@ -10,6 +10,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil3.compose.setSingletonImageLoaderFactory
 import com.allenljf.aicompanion.di.appModule
 import com.allenljf.aicompanion.theme.AppTheme
 import com.allenljf.aicompanion.ui.AiCompanionRoot
@@ -26,6 +27,9 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 @Preview
 fun App() {
+    // T18：全域 Coil ImageLoader，setSingletonImageLoaderFactory 內部是 remember 過的 lazy 初始化，
+    // 每次 App() 重組呼叫都安全（不會重建 ImageLoader）。
+    setSingletonImageLoaderFactory { context -> companionImageLoader(context) }
     KoinApplication(application = { modules(appModule) }) {
         AppTheme {
             val viewModel = koinViewModel<AiCompanionViewModel>()

@@ -195,6 +195,17 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 - [x] DI 綁定 mock→remote 用一個 flag 切換（`useRemoteApi`，保留 mock 供離線 demo）
 - [x] 雙平台實跑 + Commit：Android emulator 真 API 全流程通過（ai-partner 11 個性選項、真題庫 1/8、quiz-completions「獨處療癒師×東京」、travel-summary 銜接測驗結果、travel-guide 4 天東京行程、travel-revise 語意移除 Nonbei Yokocho）；iOS Simulator（Darwin engine）建置＋啟動＋真題庫載入通過（2026-08-15）
 
+### T18：Coil 3 圖片載入
+
+**Files:** Modify `libs.versions.toml`（新增 coil=3.5.0 + coil-compose/coil-network-ktor3）、`shared/build.gradle.kts`（commonMain 依賴）、`App.kt`（`setSingletonImageLoaderFactory`）、`ui/CompanionRootScreen.kt`（`CompanionAsyncImage` 真實作）、`ui/PlanScreens.kt`（`PlanTopBar`/`PlanChatBubble` 恢復呼叫 `CompanionAsyncImage`，刪除 `PlanAvatarPlaceholder`）；Create `CompanionImageLoader.kt`
+
+- [x] 依賴：coil-compose + coil-network-ktor3（commonMain，沿用專案既有 Ktor engine，不另加 engine）
+- [x] 全域 ImageLoader：`companionImageLoader()` + `setSingletonImageLoaderFactory`，crossfade(true)，memory/disk cache 用 Coil 3 平台預設
+- [x] `CompanionAsyncImage` 真實作：保留原簽章，內部改用 `rememberAsyncImagePainter` + `painter.state`（Coil 3 是 `StateFlow`，用 `collectAsState()`）判斷 Loading/Error/Success；retry 用 `memoryCacheKeyExtra` 換身分強制重載（Coil 3 拿掉 Coil 2 的 `setParameter` API）；`blurInOnLoad` 對齊原版 Animatable 模糊淡入語意
+- [x] `PlanScreens.kt` 頭像恢復：對照 reference `AiCompanionPlanScreens.kt`，`PlanTopBar`/`PlanChatBubble` 改回呼叫 `CompanionAsyncImage(url = avatarUrl, ...)`，`PlanAvatarPlaceholder` 無人呼叫後刪除
+- [x] 全域 grep 其餘畫面：ResultScreens/QuizScreens/TripScreens 皆已呼叫 `CompanionAsyncImage`（無其他被換成純佔位的呼叫點）
+- [x] 雙平台編譯驗證 + Android emulator 冷啟截圖確認真頭像圖載出（建立旅伴外觀預覽步驟）+ Commit `feat: 接 Coil 3 圖片載入`
+
 ---
 
 ## 逐檔帳本（來源 → 目標）
@@ -243,6 +254,7 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 - [Minor/後端] LLM 回應偶爾簡繁混雜（travel-summary 開場訊息出現簡體）——後端 prompt 的 locale 約束問題，app 端無關
 - [Minor/預期] 商品推薦卡固定顯示 mock 目錄（大阪環球影城等）與真實行程城市可能不匹配——商品搜尋無後端端點，待後端補端點後接真資料
 - [備註] 後端 LLM 偶發 429（Groq rate limit）→ 走軟失敗兜底文案，屬預期行為
+- ~~[Image loading] `CompanionAsyncImage` 為佔位版，一律顯示 placeholder，不載入真圖~~ 已修（T18）：接 Coil 3，真頭像/題目圖可正常載入，Android emulator 截圖確認
 
 ## 決策補充紀錄
 
@@ -255,7 +267,8 @@ platform/     ShareText.kt（expect）→ androidMain / iosMain 各一個 actual
 - T14：原始碼 `AiCompanionScreens.kt` 全檔無 `BackHandler`，Android 實體返回鍵沿用系統預設行為，本任務未額外接線（T13 已確認過此點，見上）
 - T10：SimpleDateFormat→手寫曆法換算（Hinnant civil_from_days，reviewer 交叉驗算通過）；UTC 日界差異記入已知問題
 - T17：真後端接入，15 支端點逐支真連線驗證（詳見 task-T17-report.md）。DTO 修正 2 處：(1) `AiPartnerDataResponse` 實際回應把 personality/speech_style/gender/outfit/hair_style/hair_color/avatars 包在 `data.variant` 底下（原 DTO 是攤平），新增 `AiPartnerVariantResponse` 巢狀層，domain model/ViewModel 不動；(2) `GET orders` 原本沒有對應 DTO（mock 版材料層直接回固定清單），新增 `OrdersDataResponse`/`OrderResponse`/`OrderDestinationResponse`，`destinationName` 取 `destinations.firstOrNull()`（比照 reference `CompanionOrderRepositoryImpl` 邏輯，`go_dt` 後端已格式化成 yyyy-MM-dd 不必再轉 epoch）。Ktor Json 設定 2 個關鍵 flag：`encodeDefaults = true`（後端把 `shown_question_counts`/`shown_cities` 等欄位標必填，即使空 map/list 也要序列化，否則 kotlinx.serialization 預設省略等於預設值的欄位會被 400 擋掉）、`coerceInputValues = true`（travel-guide 軟失敗時 `days: Int` 欄位會回 `null` 而非省略，非 nullable 欄位遇 null 要退回預設值而非直接炸 decode）；另外 `quiz-gallery` 曾在錯誤情況下遇過 `text/plain` content-type 但 body 仍是 JSON，ContentNegotiation 註冊 `contentType = ContentType.Any` 放寬比對。信封拆殼：`ApiEnvelope<T>{metadata,data}` + `unwrap()`，`metadata.status != "0000"` 丟 `CompanionApiException`。無商品搜尋端點，`TripProductSearchRepository` 續綁 mock。
-- T11/T12/T13：CompanionAsyncImage（Coil）以佔位版實作——T13 定義原名共用版，T11/T12 各有私有佔位，最終 review 收斂；`// TODO: image loading`
+- ~~T11/T12/T13：CompanionAsyncImage（Coil）以佔位版實作——T13 定義原名共用版，T11/T12 各有私有佔位，最終 review 收斂；`// TODO: image loading`~~ 已於 T18 接 Coil 3 補實作
+- T18：Coil 3（3.5.0）取代佔位版。`companionImageLoader()`（`CompanionImageLoader.kt`）用 `KtorNetworkFetcherFactory()`，不帶自訂 `HttpClient`/engine——沿用 androidMain=okhttp/iosMain=darwin 既有 engine，跟 `CompanionApiClient` 的 `HttpClient()` 同一套自動解析機制；`App.kt` 用 `setSingletonImageLoaderFactory` 掛全域單例。`CompanionAsyncImage` 對照 reference 原版行為：無 URL/Error/Loading 都退回 `placeholder()`（`loadingContent`/`errorContent` 可覆寫），Success 顯示圖並依 `placeholderAspectRatio` 用圖片實際比例撐高度。已知行為差異：(1) 原版 loading 預設是 `companionShimmer()` 效果，本專案未移植 shimmer 元件，loading 態直接退回 `placeholder()`（非 shimmer）；(2) retry 語意用 `memoryCacheKeyExtra("companion_retry", n)` 換 `ImageRequest` 身分強制重新發起請求，因為 Coil 3 拿掉了 Coil 2 的 `ImageRequest.Builder.setParameter` API；(3) `blurInOnLoad` 模糊淡入邏輯（Animatable + `Modifier.blur`）照搬原版，`blurAnimatedUrls` 全域 Set 記錄同張圖不重播動畫。`painter.state` 在 Coil 3 是 `StateFlow`（Coil 2 是可直接讀的欄位），改用 `collectAsState()`。`PlanScreens.kt` 的 `PlanTopBar`/`PlanChatBubble` 恢復呼叫 `CompanionAsyncImage(url = avatarUrl, ...)`（對照 reference `AiCompanionPlanScreens.kt` 逐字搬），`PlanAvatarPlaceholder` 刪除。驗證：Android emulator 冷啟→建立旅伴→個性擇一→外觀「隨機配一個」→外觀預覽區截圖確認真頭像圖（GCS）成功載出，取代原本「旅伴頭像預覽」文字佔位。
 - T12：deeplink 3 處 onClick 改 no-op 保留外觀；LocalConfiguration.screenHeightDp→LocalWindowInfo.containerSize 換算（審查確認語意等價）
 - T13：拆 3 檔（CompanionRootScreen/QuizScreens/ResultScreens，沿原檔章節斷面）；跳過 6 個海報鏈路 @Composable；結果頁底部欄取原檔 no-poster fallback 分支，BottomSheet 剪 4 個海報項留 6 個 nav 項；分享鈕 no-op 待 T15；原檔無 BackHandler，返回鍵接線歸 T14
 - T8：海報鏈路移除清單見 task-T8 報告（8 個 method + ShareImageV2State + 建構子 3 參數 + onCleared 空殼）；java.util.UUID→kotlin.uuid.Uuid、System.currentTimeMillis→kotlin.time.Clock（審查確認語意等價）
