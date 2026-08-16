@@ -113,6 +113,9 @@ import aicompanion.shared.generated.resources.ic_share_android_line
 
 // ---------- 結果頁（C-1 統一畫面；海報產圖/分享圖鏈路整段不搬，見 migration/02-ledger.md）----------
 
+private fun withoutKkdayHashtag(text: String): String =
+    text.replace(Regex("""\s*#kkday\b""", RegexOption.IGNORE_CASE), "").trim()
+
 /**
  * 測驗結果頁（T21：恢復原版產圖等待頁，結果不再自動顯示）。
  * 分析成功後先進 [PosterGeneratingContent] 打字機等待頁（[posterRevealed]=false），使用者點擊
@@ -150,7 +153,7 @@ internal fun ResultScreen(
     val shareableGraphicsLayer = rememberGraphicsLayer()
     // 分享文案：優先用後端 social_post，空則退回人格＋命定城市句型（BottomSheet「分享我的旅行 DNA」
     // 與「分享到 IG 限時動態」共用同一句）
-    val shareCaption = result?.socialPost.orEmpty().ifBlank {
+    val shareCaption = withoutKkdayHashtag(result?.socialPost.orEmpty()).ifBlank {
         if (result != null) "我的旅行人格是${result.travelIdentity}，命定城市是${result.destinationCn}！" else "" // TODO: i18n
     }
 
@@ -669,7 +672,7 @@ private fun PosterGeneratingContent(
 ) {
     val reasoning = result?.reasoning.orEmpty().filter { it.isNotBlank() }
     val recommendations = result?.recommendation.orEmpty().filter { it.isNotBlank() }
-    val socialPost = result?.socialPost.orEmpty()
+    val socialPost = withoutKkdayHashtag(result?.socialPost.orEmpty())
     val highlightTags = result?.highlightTags.orEmpty()
     val clipboardManager = LocalClipboardManager.current
     // 區塊序列：reasoning 全部播完才輪到身份摘要與 recommendation，recommendation 播完才輪到 social_post
@@ -951,7 +954,7 @@ private fun PosterReadyBanner(onClick: () -> Unit) {
             Icon(
                 painter = painterResource(Res.drawable.ic_arrow_right_line),
                 contentDescription = null,
-                tint = Tokens.colorWhite,
+                tint = Tokens.colorBackgroundPrimaryMedium,
                 modifier = Modifier.size(Tokens.dimensionIconSm),
             )
         }
@@ -1046,7 +1049,7 @@ internal fun CompanionResultDetailsContent(
 ) {
     // 資料已完整到手的靜態摘要：分段推薦理由以空行合併成單一卡片內文
     val recommendation = result?.recommendationText.orEmpty()
-    val socialPost = result?.socialPost.orEmpty()
+    val socialPost = withoutKkdayHashtag(result?.socialPost.orEmpty())
     val clipboardManager = LocalClipboardManager.current
 
     Column(
@@ -1417,13 +1420,14 @@ internal fun ResultDetailScreen(
                     testTag = "companion_result_detail_recommendation",
                 )
             }
-            if (result.socialPost.isNotBlank()) {
+            val socialPost = withoutKkdayHashtag(result.socialPost)
+            if (socialPost.isNotBlank()) {
                 Spacer(Modifier.height(Tokens.spacing150))
                 TitledInfoCard(
                     title = "分享文案", // TODO: i18n
-                    content = result.socialPost,
+                    content = socialPost,
                     testTag = "companion_result_detail_social_post",
-                    onCopyClick = { clipboardManager.setText(AnnotatedString(result.socialPost)) }, // TODO: 複製成功提示
+                    onCopyClick = { clipboardManager.setText(AnnotatedString(socialPost)) }, // TODO: 複製成功提示
                 )
             }
         }
