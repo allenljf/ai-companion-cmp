@@ -3,7 +3,7 @@ package com.allenljf.aicompanion.platform
 import androidx.compose.runtime.Composable
 
 /**
- * 全專案唯一一組 expect/actual（CLAUDE.md 全域限制）。
+ * Shares plain text through platform-specific implementations.
  *
  * 用 `@Composable expect fun rememberShareText(): (String) -> Unit` 而非裸的
  * `expect fun shareText(text: String)`：兩端都需要「目前畫面在哪」才能發出分享——

@@ -52,7 +52,11 @@ private fun shareToInstagramStoryOrFallback(image: ImageBitmap, caption: String)
             nsData,
             forPasteboardType = INSTAGRAM_STICKER_BACKGROUND_PASTEBOARD_TYPE,
         )
-        UIApplication.sharedApplication.openURL(storyUrl)
+        UIApplication.sharedApplication.openURL(
+            storyUrl,
+            options = emptyMap<Any?, Any?>(),
+            completionHandler = null,
+        )
         true
     } else {
         fallbackShareImage(nsData, caption)

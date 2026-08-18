@@ -20,15 +20,7 @@ import com.allenljf.aicompanion.model.TravelSummaryResult
 import com.allenljf.aicompanion.model.TripOrderMaterial
 import com.allenljf.aicompanion.model.TripProductMaterial
 
-/**
- * 原始碼移植自 KKday `CompanionRepository`（domain-contract）：簽章與方法命名保持一致，
- * 方便對照 reference/android-src 移植 UseCase/ViewModel 時不用改呼叫端。
- *
- * 去 B2C 化調整（見 migration/API_CONTRACT.md）：
- * - `fetchShareImageV2`（T19 接回）：只回傳顯示 hero 圖需要的最小欄位，不做 Bitmap 合成/輪詢
- * - `isMockEnabled` 已移除——原本是 KKday `CompanionMockSwitch`（Retrofit interceptor 開發用切換）的
- *   網路層概念，本專案資料來源本身就是 mock，且原專案中無 UseCase/ViewModel 實際呼叫它
- */
+/** Repository contract for companion, quiz, and itinerary flows. */
 interface CompanionRepository {
 
     suspend fun getAiPartner(): Result<AiPartnerResult>

@@ -12,16 +12,7 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
-/**
- * 原始碼移植自 KKday `CompanionRepositoryImpl` 的 DataStore 存取邏輯（唯讀參照：
- * reference/android-src/data-repository/CompanionRepositoryImpl.kt），對應四把 key：
- * companion_profile / companion_shown_questions / companion_quiz_history / companion_saved_trips。
- *
- * 去 B2C 化調整：原本以 memberUuid 區隔多會員資料（`memberScopedKey`），demo 只有單一使用者，
- * 拿掉這層 scoping 直接用固定 key。Gson → kotlinx.serialization：手動 Json.encodeToString /
- * decodeFromString 存成單一字串（沒用 multiplatform-settings-serialization 的 encodeValue，
- * 行為完全自己掌握，出錯訊息直接看得到）。
- */
+/** Cross-platform local storage for the companion profile, quiz history, and saved trips. */
 class LocalCompanionStore(private val settings: Settings) {
 
     private val json = Json { ignoreUnknownKeys = true }

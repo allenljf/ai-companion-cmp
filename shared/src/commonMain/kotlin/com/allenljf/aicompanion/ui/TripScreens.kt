@@ -1,5 +1,6 @@
 package com.allenljf.aicompanion.ui
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -8,11 +9,10 @@ import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -35,6 +35,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -60,6 +61,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -75,6 +77,9 @@ import com.allenljf.aicompanion.ui.components.ButtonSizeType
 import com.allenljf.aicompanion.ui.components.ButtonState
 import com.allenljf.aicompanion.ui.components.ButtonType
 import com.allenljf.aicompanion.ui.components.DragHandle
+import com.allenljf.aicompanion.ui.components.GlassStyle
+import com.allenljf.aicompanion.ui.components.appGradientBackdrop
+import com.allenljf.aicompanion.ui.components.glassSurface
 import com.allenljf.aicompanion.platform.rememberOpenUrl
 import com.allenljf.aicompanion.viewmodel.TravelGuideState
 import com.allenljf.aicompanion.viewmodel.TripReviseState
@@ -92,6 +97,10 @@ import aicompanion.shared.generated.resources.ic_heart_line
 import aicompanion.shared.generated.resources.ic_location_arrow_line
 import aicompanion.shared.generated.resources.ic_train_line
 import aicompanion.shared.generated.resources.ic_walk_line
+import aicompanion.shared.generated.resources.platform_agoda
+import aicompanion.shared.generated.resources.platform_kkday
+import aicompanion.shared.generated.resources.platform_klook
+import aicompanion.shared.generated.resources.platform_tripcom
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
@@ -112,12 +121,22 @@ private val TRIP_REVISE_FAB_SIZE = 72.dp
  * hero：行程情境圖（travel-guide 的 hero_image_url）＋壓字（日期列＋大標）＋右上關閉鈕
  * （設計稿 TripHero，226dp）。無圖或載入失敗時退回品牌色深漸層占位。
  */
+private val TRIP_HERO_HEIGHT_EXPANDED = 264.dp
+private val TRIP_HERO_HEIGHT_COLLAPSED = 72.dp
+
 @Composable
-private fun TripHero(trip: SavedTripRecord, onClose: () -> Unit, onDelete: () -> Unit) {
+private fun TripHero(
+    trip: SavedTripRecord,
+    collapseFraction: Float,
+    onClose: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    val heroHeight = TRIP_HERO_HEIGHT_EXPANDED -
+        (TRIP_HERO_HEIGHT_EXPANDED - TRIP_HERO_HEIGHT_COLLAPSED) * collapseFraction
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(226.dp)
+            .height(heroHeight)
             .background(
                 Brush.verticalGradient(
                     listOf(
@@ -145,6 +164,7 @@ private fun TripHero(trip: SavedTripRecord, onClose: () -> Unit, onDelete: () ->
         Column(
             modifier = Modifier
                 .align(Alignment.TopEnd)
+                .graphicsLayer(alpha = 1f - collapseFraction)
                 .statusBarsPadding()
                 .padding(top = Tokens.spacing150, end = Tokens.spacing150),
             verticalArrangement = Arrangement.spacedBy(Tokens.spacing100),
@@ -164,7 +184,13 @@ private fun TripHero(trip: SavedTripRecord, onClose: () -> Unit, onDelete: () ->
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .padding(horizontal = Tokens.spacing200, vertical = Tokens.spacing200),
+                .graphicsLayer(alpha = 1f - collapseFraction)
+                .padding(horizontal = Tokens.spacing200, vertical = Tokens.spacing200)
+                .glassSurface(
+                    shape = RoundedCornerShape(Tokens.radiusXl),
+                    fill = GlassStyle.fillTinted(Color.Black, alpha = 0.32f),
+                )
+                .padding(horizontal = Tokens.spacing200, vertical = Tokens.spacing150),
         ) {
             Text(
                 "行程排好了・${trip.city}・共 ${trip.totalDays} 天", // TODO: i18n
@@ -176,7 +202,7 @@ private fun TripHero(trip: SavedTripRecord, onClose: () -> Unit, onDelete: () ->
             Text(
                 trip.title,
                 fontWeight = FontWeight(Tokens.fontWeightBold),
-                fontSize = Tokens.fontSize7,
+                fontSize = Tokens.fontSize3,
                 color = Tokens.colorWhite,
             )
         }
@@ -192,9 +218,7 @@ private fun TripHeroActionButton(
     Box(
         modifier = Modifier
             .size(34.dp)
-            .clip(CircleShape)
-            .background(Color.Black.copy(alpha = 0.4f))
-            .border(1.dp, Color.White.copy(alpha = 0.4f), CircleShape)
+            .glassSurface(shape = CircleShape, fill = GlassStyle.fillTinted(Color.Black, alpha = 0.4f))
             .clickable(onClick = onClick)
             .testTag(testTag),
         contentAlignment = Alignment.Center,
@@ -204,6 +228,60 @@ private fun TripHeroActionButton(
             contentDescription = null,
             tint = Tokens.colorWhite,
             modifier = Modifier.size(Tokens.dimensionIconXs),
+        )
+    }
+}
+
+/**
+ * 摺疊後浮現的頂部玻璃 toolbar：hero 縮到最小時淡入，補上被壓縮掉的行程名稱與關閉/刪除鈕
+ * （hero 自己的按鈕這時已淡出，見 TripHero 的 collapseFraction 用法）。
+ */
+@Composable
+private fun TripCollapsedToolbar(
+    title: String,
+    alpha: Float,
+    onClose: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    // hero 展開時完全透明也不畫出來——否則看不見的 Row 仍會攔截點擊/捲動手勢，蓋住 hero 自己的按鈕與內容
+    if (alpha < 0.05f) return
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer(alpha = alpha)
+            .background(Tokens.colorWhite)
+            .statusBarsPadding()
+            .padding(horizontal = Tokens.spacing150, vertical = Tokens.spacing100),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            title,
+            fontWeight = FontWeight(Tokens.fontWeightBold),
+            fontSize = Tokens.fontSize4,
+            color = Tokens.colorTextDarker,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        Spacer(Modifier.width(Tokens.spacing100))
+        Icon(
+            painter = painterResource(Res.drawable.ic_delete_line),
+            contentDescription = null,
+            tint = Tokens.colorTextDarker,
+            modifier = Modifier
+                .size(Tokens.dimensionIconMd)
+                .clickable(onClick = onDelete)
+                .testTag("companion_trip_delete_btn_collapsed"),
+        )
+        Spacer(Modifier.width(Tokens.spacing150))
+        Icon(
+            painter = painterResource(Res.drawable.ic_cross_line),
+            contentDescription = null,
+            tint = Tokens.colorTextDarker,
+            modifier = Modifier
+                .size(Tokens.dimensionIconMd)
+                .clickable(onClick = onClose)
+                .testTag("companion_trip_close_btn_collapsed"),
         )
     }
 }
@@ -218,7 +296,7 @@ private fun TripDayTabs(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Tokens.colorWhite)
+            .glassSurface(shape = RoundedCornerShape(0.dp))
             .horizontalScroll(rememberScrollState())
             .padding(horizontal = Tokens.spacing150),
     ) {
@@ -363,7 +441,7 @@ private fun TripBottomBar(isSaved: Boolean, onSave: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Tokens.colorWhite)
+            .glassSurface(shape = RoundedCornerShape(0.dp))
             .navigationBarsPadding()
             .padding(horizontal = Tokens.spacing200, vertical = Tokens.spacing150)
             .testTag("companion_trip_save_btn"),
@@ -387,7 +465,10 @@ private fun SaveSuccessToast(visible: Boolean) {
     if (!visible) return
     Box(
         modifier = Modifier
-            .background(Color.Black.copy(alpha = 0.78f), RoundedCornerShape(999.dp))
+            .glassSurface(
+                shape = RoundedCornerShape(999.dp),
+                fill = GlassStyle.fillTinted(Color.Black, alpha = 0.6f),
+            )
             .padding(horizontal = Tokens.spacing150, vertical = Tokens.spacing100)
             .testTag("companion_trip_save_toast"),
     ) {
@@ -473,7 +554,7 @@ internal fun TripResultScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Tokens.colorBackgroundSurfaceLight)
+            .appGradientBackdrop()
             .testTag("companion_trip_result_screen"),
     ) {
         when (state) {
@@ -547,14 +628,37 @@ private fun TripLoadedContent(
         }
     }
 
+    // Hero 摺疊：hero 是 LazyColumn 第一個 item，往上滑動時用 firstVisibleItemScrollOffset
+    // 算出摺疊進度（0=展開、1=完全摺疊到最小高度），僅在 hero 還是第一個可見項目時生效
+    val listState = rememberLazyListState()
+    val heroScrollRangePx = with(LocalDensity.current) {
+        (TRIP_HERO_HEIGHT_EXPANDED - TRIP_HERO_HEIGHT_COLLAPSED).toPx()
+    }
+    val heroCollapseFraction by remember {
+        derivedStateOf {
+            if (listState.firstVisibleItemIndex == 0) {
+                (listState.firstVisibleItemScrollOffset / heroScrollRangePx).coerceIn(0f, 1f)
+            } else {
+                1f
+            }
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .onSizeChanged { contentSize = it },
     ) {
     Column(modifier = Modifier.fillMaxSize()) {
-        LazyColumn(modifier = Modifier.weight(1f)) {
-            item(key = "hero") { TripHero(trip = trip, onClose = onClose, onDelete = onDelete) }
+        LazyColumn(state = listState, modifier = Modifier.weight(1f)) {
+            item(key = "hero") {
+                TripHero(
+                    trip = trip,
+                    collapseFraction = heroCollapseFraction,
+                    onClose = onClose,
+                    onDelete = onDelete,
+                )
+            }
             item(key = "tabs") { TripDayTabs(tabs = tabs, selected = tab, onSelect = { tab = it }) }
 
             if (tab == 0) {
@@ -740,6 +844,12 @@ private fun TripLoadedContent(
     ) {
         SaveSuccessToast(visible = showSaveToast)
     }
+    TripCollapsedToolbar(
+        title = trip.title,
+        alpha = heroCollapseFraction,
+        onClose = onClose,
+        onDelete = onDelete,
+    )
     }
 
     if (reviseState.active) {
@@ -806,6 +916,7 @@ private fun TimelineStopCard(
     isLast: Boolean,
     destination: String,
 ) {
+    val openUrl = rememberOpenUrl()
     Row {
         Column(
             modifier = Modifier.width(20.dp),
@@ -833,9 +944,7 @@ private fun TimelineStopCard(
             modifier = Modifier
                 .weight(1f)
                 .padding(bottom = Tokens.spacing150)
-                .clip(RoundedCornerShape(Tokens.radiusLg))
-                .border(1.dp, Tokens.colorBorderLight, RoundedCornerShape(Tokens.radiusLg))
-                .background(Tokens.colorWhite)
+                .glassSurface(shape = RoundedCornerShape(Tokens.radiusLg))
                 .padding(Tokens.spacing150),
         ) {
             Row(verticalAlignment = Alignment.Top) {
@@ -903,7 +1012,8 @@ private fun TimelineStopCard(
                         modifier = Modifier
                             .size(Tokens.dimensionIconSm)
                             .clickable {
-                                // TODO: deeplink（原用 geo: intent 開地圖 app，找不到再退回瀏覽器開 Google Maps；demo 拿掉）
+                                // 純瀏覽器 URL 開 Google Maps（原 geo: intent 方案已拿掉，見上方註解）
+                                openUrl("https://www.google.com/maps/search/?api=1&query=${item.lat},${item.lng}")
                             }
                             .testTag("companion_trip_nav_btn"),
                     )
@@ -921,12 +1031,10 @@ private fun TimelineStopCard(
  * 景點外部平台搜尋按鈕（取代原本的商品搜尋卡）：純開網頁、不叫任何搜尋 API。
  *
  * 背景：商品搜尋卡原本要打後端搜尋 API 才能顯示縮圖／評分／價格與「還有 N 項」，但沒有真後端可用——
- * KKday 內部端點（v2.1/search/product_list）依專案定案不接，三家主要 OTA（KKday/Klook/Trip.com）
- * 也都沒有公開的商品搜尋 API（見 migration/research-ota-product-apis.md）。改成 4 個固定平台的按鈕，
+ * No product search API is called from the app. The UI uses four fixed platform links instead,
  * 點擊直接開各平台前台搜尋結果頁，關鍵字統一「{目的地} {景點名}」——這些 URL 格式都經過瀏覽器實測驗證。
  * 沒有預覽資料（縮圖/評分/價格/數量），這是純深連結必然的取捨。
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun TripSpotSearchLinks(destination: String, spotName: String) {
     val openUrl = rememberOpenUrl()
@@ -935,36 +1043,30 @@ private fun TripSpotSearchLinks(destination: String, spotName: String) {
 
     val platforms = remember(keyword) {
         listOf(
-            "KKday" to "https://www.kkday.com/zh-tw/product/productlist/${keyword.encodeURLParameter()}",
-            "Klook" to "https://www.klook.com/zh-TW/search/result/?query=${keyword.encodeURLParameter()}&search_scope=main_search",
-            "Trip.com" to "https://tw.trip.com/things-to-do/list?pagetype=city&keyword=${keyword.encodeURLParameter()}&pshowcode=all&kwdfrom=srch&ext-searchpage=1",
-            "Agoda" to "https://www.agoda.com/zh-tw/activities/search?keyword=${keyword.encodeURLParameter()}",
+            Triple("KKday", Res.drawable.platform_kkday, "https://www.kkday.com/zh-tw/product/productlist/${keyword.encodeURLParameter()}"),
+            Triple("Klook", Res.drawable.platform_klook, "https://www.klook.com/zh-TW/search/result/?query=${keyword.encodeURLParameter()}&search_scope=main_search"),
+            Triple("Trip.com", Res.drawable.platform_tripcom, "https://tw.trip.com/things-to-do/list?pagetype=city&keyword=${keyword.encodeURLParameter()}&pshowcode=all&kwdfrom=srch&ext-searchpage=1"),
+            Triple("Agoda", Res.drawable.platform_agoda, "https://www.agoda.com/zh-tw/activities/search?keyword=${keyword.encodeURLParameter()}"),
         )
     }
 
-    FlowRow(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = Tokens.spacing100)
             .testTag("companion_trip_product_links"),
-        horizontalArrangement = Arrangement.spacedBy(Tokens.spacing075),
+        horizontalArrangement = Arrangement.SpaceEvenly,
     ) {
-        platforms.forEach { (label, url) ->
-            Box(
+        platforms.forEach { (label, drawable, url) ->
+            Image(
+                painter = painterResource(drawable),
+                contentDescription = label,
                 modifier = Modifier
-                    .clip(RoundedCornerShape(Tokens.radiusMd))
-                    .border(1.dp, Tokens.colorBorderLight, RoundedCornerShape(Tokens.radiusMd))
+                    .size(Tokens.dimensionIconXl)
+                    .glassSurface(shape = CircleShape)
                     .clickable { openUrl(url) }
-                    .padding(horizontal = Tokens.spacing150, vertical = Tokens.spacing075)
                     .testTag("companion_trip_product_link_${label}"),
-            ) {
-                Text(
-                    label,
-                    fontSize = Tokens.fontSize1,
-                    fontWeight = FontWeight(Tokens.fontWeightMediumAndroid),
-                    color = Tokens.colorTextPrimaryDark,
-                )
-            }
+            )
         }
     }
 }

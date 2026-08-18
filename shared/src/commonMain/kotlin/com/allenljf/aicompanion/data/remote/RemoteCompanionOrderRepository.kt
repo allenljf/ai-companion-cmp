@@ -7,7 +7,6 @@ import com.allenljf.aicompanion.model.toMaterial
 
 /**
  * [CompanionOrderRepository] 的真後端實作：orders/wish_list/history 三支 GET，無 request body。
- * 邏輯比照 reference/android-src/data-repository/CompanionOrderRepositoryImpl.kt：
  * orders 依出發日排序取最近 3 筆；wish_list/history 過濾名稱或編號空白的髒資料後取前 20 筆。
  */
 class RemoteCompanionOrderRepository(

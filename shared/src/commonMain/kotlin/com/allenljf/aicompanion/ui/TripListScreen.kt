@@ -1,7 +1,6 @@
 package com.allenljf.aicompanion.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -30,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -42,6 +42,9 @@ import com.allenljf.aicompanion.ui.components.ButtonSizeType
 import com.allenljf.aicompanion.ui.components.ButtonState
 import com.allenljf.aicompanion.ui.components.ButtonType
 import com.allenljf.aicompanion.ui.components.DialogHeaderType
+import com.allenljf.aicompanion.ui.components.GlassStyle
+import com.allenljf.aicompanion.ui.components.appGradientBackdrop
+import com.allenljf.aicompanion.ui.components.glassSurface
 import org.jetbrains.compose.resources.painterResource
 import aicompanion.shared.generated.resources.Res
 import aicompanion.shared.generated.resources.ic_arrow_left_line
@@ -63,13 +66,13 @@ internal fun SavedTripListScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Tokens.colorBackgroundSurfaceLight)
+            .appGradientBackdrop()
             .testTag("companion_trip_list_screen"),
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Tokens.colorWhite)
+                .glassSurface(shape = RoundedCornerShape(0.dp))
                 .statusBarsPadding()
                 .padding(horizontal = Tokens.spacing200, vertical = Tokens.spacing150),
             verticalAlignment = Alignment.CenterVertically,
@@ -135,6 +138,7 @@ internal fun SavedTripListScreen(
             headerType = DialogHeaderType.Text(title = "刪除這筆行程？", useScrollableContent = false), // TODO: i18n
             showHeaderCloseButton = false,
             showFooterShadow = false,
+            containerColor = Color.White,
             onDismissRequest = { pendingDelete = null },
             content = {
                 Text(
@@ -184,9 +188,7 @@ private fun SavedTripListItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(Tokens.radiusLg))
-            .border(1.dp, Tokens.colorBorderLight, RoundedCornerShape(Tokens.radiusLg))
-            .background(Tokens.colorWhite)
+            .glassSurface(shape = RoundedCornerShape(Tokens.radiusLg))
             .clickable(onClick = onClick)
             .padding(Tokens.spacing150)
             .testTag("companion_trip_list_item"),

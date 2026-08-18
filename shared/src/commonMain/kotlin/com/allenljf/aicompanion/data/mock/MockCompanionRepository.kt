@@ -26,7 +26,7 @@ import com.allenljf.aicompanion.model.TripProductMaterial
 
 /**
  * [CompanionRepository] 的 mock 實作：不打真的網路，直接回 [MockData] 準備好的寫實假資料，
- * 形狀依 migration/API_CONTRACT.md。每支方法都先 `MockData.networkDelay()`（300~800ms）模擬網路。
+ * Each method calls `MockData.networkDelay()` (300-800ms) to simulate network latency.
  *
  * 本地持久化方法（getLocalCompanion/getQuizHistory/getSavedTrips 等）委派給注入的 [LocalCompanionStore]
  * （multiplatform-settings 持久化），跨 App session 保留。

@@ -4,8 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.ImageBitmap
 
 /**
- * 分享到 IG 限時動態（T20 新增第二組 expect/actual——CLAUDE.md 原「全專案唯一一組」限制本次需求解除，
- * 見 migration/02-ledger.md 決策補充）。
+ * Shares an image to Instagram Stories through platform-specific implementations.
  *
  * 圖片來源刻意是 [ImageBitmap]（呼叫端用 `rememberGraphicsLayer()` 持續錄製「Hero + 黑色資訊卡」容器的
  * 當下畫面截圖，見 ui/ResultScreens.kt），不是重新下載 hero URL——確保分享出去的圖片跟使用者在畫面上

@@ -553,10 +553,13 @@ data class QuizGalleryItemResponse(
 )
 
 // ---------- POST /companion/share-image-v2 ----------
-// T19：後端已產好合成圖，App 只顯示 hero_url，不做 Bitmap 疊字/輪詢（見 migration/01-decisions.md #6 後續變更）。
+// The backend returns a ready-to-display hero URL; the client does not compose or poll images locally.
 // T20：結果頁改回沈浸式完整版面（hero + 黑色資訊卡 + tag 圓圖），需要 content/decorations 補齊顯示欄位。
-// T21：補回 *_fallback_category 三欄位——tag/stamp 缺圖時 UI 需要類別字串查表換內建 icon（見 PosterFallbackAssets）；
-// hero_fallback_category 目前仍無 UI 用途（hero 缺圖直接走無海報版面），先隨 DTO 帶上不用，避免之後又要補一次。
+// T21：補回 *_fallback_category 三欄位，供缺圖時 UI 查表換內建 icon；hero_fallback_category 目前仍無
+// UI 用途（hero 缺圖直接走無海報版面），先隨 DTO 帶上不用，避免之後又要補一次。
+// 之後：後端 Gemini 產圖配額限制，decorations.stamp_url／stamp_fallback_category 固定回傳 null，
+// App 端已停止使用（不快取、不顯示 fallback，見 ResultScreens.kt ImmersiveShareHeroWithBadge）；
+// 欄位本身保留不刪，供之後配額調升重新啟用時復原。
 
 @Serializable
 data class ShareImageV2Request(

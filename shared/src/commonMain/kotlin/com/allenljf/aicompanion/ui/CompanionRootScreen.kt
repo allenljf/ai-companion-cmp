@@ -3,19 +3,20 @@ package com.allenljf.aicompanion.ui
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -45,6 +46,8 @@ import com.allenljf.aicompanion.ui.components.ButtonSizeType
 import com.allenljf.aicompanion.ui.components.ButtonState
 import com.allenljf.aicompanion.ui.components.ButtonType
 import com.allenljf.aicompanion.ui.components.AppButton
+import com.allenljf.aicompanion.ui.components.appGradientBackdrop
+import com.allenljf.aicompanion.ui.components.glassSurface
 import com.allenljf.aicompanion.viewmodel.AiCompanionViewModel
 import com.allenljf.aicompanion.viewmodel.IntroductionState
 import com.allenljf.aicompanion.viewmodel.TravelGuideState
@@ -379,13 +382,17 @@ internal fun ScreenScaffold(
         modifier = Modifier
             .fillMaxSize()
             .testTag(screenTag)
-            .background(Tokens.colorBackgroundSurfaceLight)
+            .appGradientBackdrop()
             .statusBarsPadding()
             .navigationBarsPadding()
             .verticalScroll(rememberScrollState())
             .padding(Tokens.spacing300),
     ) {
         Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .glassSurface(shape = RoundedCornerShape(Tokens.radiusXl))
+                .padding(horizontal = Tokens.spacing150, vertical = Tokens.spacing100),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (onBack != null) {

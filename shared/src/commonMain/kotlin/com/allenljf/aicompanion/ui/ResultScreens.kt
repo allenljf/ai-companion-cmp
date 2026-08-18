@@ -11,7 +11,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.scaleIn
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.aspectRatio
@@ -54,6 +53,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.rememberGraphicsLayer
@@ -74,10 +74,15 @@ import com.allenljf.aicompanion.platform.rememberShareImageToInstagramStory
 import com.allenljf.aicompanion.platform.rememberShareText
 import com.allenljf.aicompanion.theme.Tokens
 import com.allenljf.aicompanion.ui.components.AppButton
+import com.allenljf.aicompanion.ui.components.AppDialog
 import com.allenljf.aicompanion.ui.components.ButtonSizeType
 import com.allenljf.aicompanion.ui.components.ButtonState
 import com.allenljf.aicompanion.ui.components.ButtonType
+import com.allenljf.aicompanion.ui.components.DialogHeaderType
 import com.allenljf.aicompanion.ui.components.DragHandle
+import com.allenljf.aicompanion.ui.components.GlassStyle
+import com.allenljf.aicompanion.ui.components.appGradientBackdrop
+import com.allenljf.aicompanion.ui.components.glassSurface
 import com.allenljf.aicompanion.viewmodel.AiCompanionViewModel
 import com.allenljf.aicompanion.viewmodel.AnalysisState
 import com.allenljf.aicompanion.viewmodel.CompanionCreationState
@@ -86,7 +91,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import aicompanion.shared.generated.resources.Res
-import aicompanion.shared.generated.resources.companion_stamp_fallback_generic
 import aicompanion.shared.generated.resources.ic_arrow_right_line
 import aicompanion.shared.generated.resources.ic_cross_line
 import aicompanion.shared.generated.resources.ic_copy_line
@@ -99,7 +103,7 @@ import aicompanion.shared.generated.resources.ic_note_line
 import aicompanion.shared.generated.resources.ic_people_line
 import aicompanion.shared.generated.resources.ic_share_android_line
 
-// ---------- 結果頁（C-1 統一畫面；海報產圖/分享圖鏈路整段不搬，見 migration/02-ledger.md）----------
+// ---------- 結果頁 ----------
 
 private fun withoutKkdayHashtag(text: String): String =
     text.replace(Regex("""\s*#kkday\b""", RegexOption.IGNORE_CASE), "").trim()
@@ -152,7 +156,7 @@ internal fun ResultScreen(
         modifier = Modifier
             .fillMaxSize()
             .testTag("companion_result_screen")
-            .background(Tokens.colorWhite)
+            .appGradientBackdrop()
             .then(if (showingSelfPaddedContent) Modifier else Modifier.statusBarsPadding()),
     ) {
         when {
@@ -205,10 +209,12 @@ internal fun ResultScreen(
                     // 沈浸式版面：hero 滿版頂到狀態列下方，內容依序往下排列（不疊加），下方接 tag 圓圖列／
                     // 既有推薦理由卡；不再重複顯示目的地/tagline（hero 上的黑色資訊卡已經有）
                     val shareResult = currentShareImageV2.result
+                    val readyScrollState = rememberScrollState()
+                    LaunchedEffect(result) { readyScrollState.scrollTo(0) }
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .verticalScroll(rememberScrollState()),
+                            .verticalScroll(readyScrollState),
                     ) {
                         Box(
                             modifier = Modifier.drawWithContent {
@@ -221,7 +227,6 @@ internal fun ResultScreen(
                                 destinationCn = shareResult.content.destinationCn,
                                 destinationEn = shareResult.content.destinationEn,
                                 tagline = shareResult.content.tagline,
-                                stampUrl = shareResult.stampUrl,
                             )
                         }
                         Spacer(Modifier.height(Tokens.spacing200))
@@ -235,10 +240,12 @@ internal fun ResultScreen(
                     }
                 } else {
                     // 人格 + 命定城市展示（原始碼「無海報」fallback 分支，hero 尚未就緒時的內容路徑）
+                    val fallbackScrollState = rememberScrollState()
+                    LaunchedEffect(result) { fallbackScrollState.scrollTo(0) }
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .verticalScroll(rememberScrollState()),
+                            .verticalScroll(fallbackScrollState),
                     ) {
                         // T19：海報 hero 圖很慢（約 80 秒），文字內容不等它顯示——Failed/Idle 不佔版位，
                         // Loading 顯示輕量佔位，版面不會因為缺圖而破
@@ -288,7 +295,7 @@ internal fun ResultScreen(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .fillMaxWidth()
-                        .background(Tokens.colorWhite)
+                        .background(Color.White)
                         .navigationBarsPadding()
                         .padding(horizontal = Tokens.spacing300, vertical = Tokens.spacing200),
                 ) {
@@ -394,13 +401,12 @@ private const val HERO_ASPECT_RATIO = 9f / 16f
 
 /**
  * 沈浸式 hero：滿版無左右 padding、無圓角（呼叫端 [ResultScreen] 也拿掉了根 Box 的 statusBarsPadding），
- * 讓圖片往上頂到狀態列下方；底部疊一層黑色半透明資訊卡（目的地＋tagline 白字 + 目的地 stamp 圓圖），
+ * 讓圖片往上頂到狀態列下方；底部疊一層黑色半透明資訊卡（目的地＋tagline 白字）。
  * 比照原始碼 `PosterHeroWithBadge`（reference SixZonePosterComposer.kt:161-224），
  * 只是把浮動圓角卡片改成貼齊 hero 邊緣的滿版長條，呼應「沈浸式」的滿版訴求。
- * T21：stamp 圓圖改為恆顯示——[stampUrl] 空時用內建 fallback icon 佔位（原本是 stampUrl 空就整塊
- * 不顯示，現在比照 tag icon 走 per-slot fallback，見任務規格 C）。stamp 只有一顆 generic fallback
- * 素材（無 category 對應表，比照 reference `PosterFallbackAssets.stampDrawable()` 不吃參數），
- * 故 `stamp_fallback_category` 欄位雖已補進 domain model，這裡不需要引用。
+ * 目的地 stamp 圓圖已隨後端 Gemini 產圖配額限制拿掉（`decorations.stamp_url` 固定回傳 null）——
+ * 比照 tag icon 目前的處理方式，這次沒有就不顯示、不畫 fallback 圖案（`stamp_fallback_category`
+ * 因此也沒有引用的必要）。之後配額調升重新啟用時可參考 git history commit dc2151d 復原。
  */
 @Composable
 private fun ImmersiveShareHeroWithBadge(
@@ -408,7 +414,6 @@ private fun ImmersiveShareHeroWithBadge(
     destinationCn: String,
     destinationEn: String,
     tagline: String,
-    stampUrl: String?,
 ) {
     Box(modifier = Modifier.fillMaxWidth()) {
         CompanionAsyncImage(
@@ -420,61 +425,31 @@ private fun ImmersiveShareHeroWithBadge(
             placeholderAspectRatio = HERO_ASPECT_RATIO,
             blurInOnLoad = true,
         )
-        Row(
+        Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .fillMaxWidth()
                 .background(Color.Black.copy(alpha = 0.4f))
                 .padding(horizontal = Tokens.spacing300, vertical = Tokens.spacing200)
                 .testTag("companion_result_hero_badge"),
-            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    listOf(destinationCn, destinationEn).filter { it.isNotBlank() }.joinToString(" · "),
-                    color = Color.White,
-                    fontWeight = FontWeight(Tokens.fontWeightBold),
-                    fontSize = Tokens.fontSize5,
-                    modifier = Modifier.testTag("companion_result_hero_destination"),
-                )
-                if (tagline.isNotBlank()) {
-                    Spacer(Modifier.height(Tokens.spacing050))
-                    Text(
-                        tagline,
-                        color = Color.White.copy(alpha = 0.85f),
-                        fontSize = Tokens.fontSize2,
-                    )
-                }
-            }
-            Spacer(Modifier.width(Tokens.spacing200))
-            CompanionAsyncImage(
-                url = stampUrl.orEmpty(),
-                modifier = Modifier
-                    .size(64.dp)
-                    .clip(CircleShape)
-                    .testTag("companion_result_hero_stamp"),
-                placeholder = {
-                    Icon(
-                        painter = painterResource(PosterFallbackAssets.stampDrawable()),
-                        contentDescription = null,
-                        tint = Color.Unspecified,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                },
+            Text(
+                listOf(destinationCn, destinationEn).filter { it.isNotBlank() }.joinToString(" · "),
+                color = Color.White,
+                fontWeight = FontWeight(Tokens.fontWeightBold),
+                fontSize = Tokens.fontSize5,
+                modifier = Modifier.testTag("companion_result_hero_destination"),
             )
+            if (tagline.isNotBlank()) {
+                Spacer(Modifier.height(Tokens.spacing050))
+                Text(
+                    tagline,
+                    color = Color.White.copy(alpha = 0.85f),
+                    fontSize = Tokens.fontSize2,
+                )
+            }
         }
     }
-}
-
-/**
- * fallback_category → 內建 bundled 素材，對應 spec「Per-Slot Asset Fallback」（比照 reference
- * `poster/PosterFallbackAssets.kt`）。類別字串直接來自後端 stamp_fallback_category，
- * 任何未知類別一律退到 generic 版本，避免 App 端因後端新增分類而崩潰。
- * tag 圓圖那組 fallback（`tag_fallback_categories`）已隨後端不再回傳 tag_icon_urls 一併移除——
- * 沈浸式版面現在跟其他版面一樣，只顯示 highlight_tags 純文字 pill。
- */
-private object PosterFallbackAssets {
-    fun stampDrawable() = Res.drawable.companion_stamp_fallback_generic
 }
 
 /**
@@ -567,7 +542,7 @@ private fun LoadingDotsRow() {
 
 // ---------- T21：海報產圖等待頁（分析成功後、揭曉結果前）----------
 
-private const val TYPEWRITER_CHAR_DELAY_MS = 50L
+private const val TYPEWRITER_CHAR_DELAY_MS = 17L
 
 /** 逐字打字機效果：每 [TYPEWRITER_CHAR_DELAY_MS] ms 多顯示一個字，打字中結尾帶游標；[onFinished] 於整段顯示完後呼叫一次。 */
 @Composable
@@ -842,7 +817,7 @@ private fun PosterGeneratingContent(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Tokens.colorWhite)
+                .glassSurface(shape = RectangleShape)
                 .navigationBarsPadding()
                 .padding(horizontal = Tokens.spacing300, vertical = Tokens.spacing200),
             contentAlignment = Alignment.Center,
@@ -864,14 +839,11 @@ private fun ReasoningBubble(
     isHighlight: Boolean,
     content: @Composable () -> Unit,
 ) {
-    val bgColor = if (isHighlight) Tokens.colorBackgroundPrimaryLighter else Tokens.colorWhite
-    val borderColor = if (isHighlight) Tokens.colorBorderPrimaryLight else Tokens.colorBorderLight
+    val fill = if (isHighlight) GlassStyle.fillTinted(Tokens.colorBackgroundPrimaryLighter) else GlassStyle.fillClear
     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
         Box(
             modifier = Modifier
-                .clip(RoundedCornerShape(Tokens.radiusLg))
-                .border(1.dp, borderColor, RoundedCornerShape(Tokens.radiusLg))
-                .background(bgColor)
+                .glassSurface(shape = RoundedCornerShape(Tokens.radiusLg), fill = fill)
                 .padding(Tokens.spacing200),
         ) {
             content()
@@ -906,8 +878,7 @@ private fun PosterReadyBanner(onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(Tokens.radiusLg))
-            .background(Tokens.colorBackgroundPrimaryMedium)
+            .glassSurface(shape = RoundedCornerShape(Tokens.radiusLg), fill = GlassStyle.fillTinted(Tokens.colorBackgroundPrimaryMedium))
             .clickable(onClick = onClick)
             .padding(Tokens.spacing200)
             .testTag("companion_share_poster_ready_banner"),
@@ -1411,15 +1382,14 @@ internal fun ChatBubble(
     isCompanion: Boolean,
     content: @Composable () -> Unit,
 ) {
-    val bgColor = if (isCompanion) Tokens.colorBackgroundSurfaceLight
-    else Tokens.colorBackgroundPrimaryLighter
+    val fill = if (isCompanion) GlassStyle.fillClear
+    else GlassStyle.fillTinted(Tokens.colorBackgroundPrimaryLighter)
     val alignment = if (isCompanion) Alignment.CenterStart else Alignment.CenterEnd
 
     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = alignment) {
         Box(
             modifier = Modifier
-                .clip(RoundedCornerShape(Tokens.radiusLg))
-                .background(bgColor)
+                .glassSurface(shape = RoundedCornerShape(Tokens.radiusLg), fill = fill)
                 .padding(Tokens.spacing200),
         ) {
             content()
@@ -1458,9 +1428,7 @@ internal fun TitledInfoCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(Tokens.radiusLg))
-            .border(1.dp, Tokens.colorBorderLight, RoundedCornerShape(Tokens.radiusLg))
-            .background(Tokens.colorWhite)
+            .glassSurface(shape = RoundedCornerShape(Tokens.radiusLg))
             .padding(Tokens.spacing200)
             .testTag(testTag),
     ) {
@@ -1509,6 +1477,7 @@ internal fun CompanionHistoryScreen(
 ) {
     val history by viewModel.quizHistory.collectAsStateWithLifecycle()
     var selectedCreatedAt by remember { mutableStateOf<Long?>(null) }
+    var pendingDelete by remember { mutableStateOf<QuizHistoryRecord?>(null) }
 
     val current = history.firstOrNull { it.createdAt == selectedCreatedAt }
     if (current != null) {
@@ -1521,6 +1490,7 @@ internal fun CompanionHistoryScreen(
             onGoHome = onGoHome,
             onViewOthers = onViewOthers,
             onStartPlanning = { onStartPlanning(current.result) },
+            onDelete = { pendingDelete = current },
         )
     } else {
         ScreenScaffold(
@@ -1557,11 +1527,60 @@ internal fun CompanionHistoryScreen(
                     verticalArrangement = Arrangement.spacedBy(Tokens.spacing150),
                 ) {
                     history.forEach { record ->
-                        CompanionHistoryItem(record = record, onClick = { selectedCreatedAt = record.createdAt })
+                        CompanionHistoryItem(
+                            record = record,
+                            onClick = { selectedCreatedAt = record.createdAt },
+                            onDelete = { pendingDelete = record },
+                        )
                     }
                 }
             }
         }
+    }
+
+    pendingDelete?.let { target ->
+        AppDialog(
+            headerType = DialogHeaderType.Text(title = "刪除這筆旅行 DNA？", useScrollableContent = false), // TODO: i18n
+            showHeaderCloseButton = false,
+            showFooterShadow = false,
+            containerColor = Color.White,
+            onDismissRequest = { pendingDelete = null },
+            content = {
+                Text(
+                    "刪除後無法復原", // TODO: i18n
+                    color = Tokens.colorTextMedium,
+                    fontSize = Tokens.fontSize3,
+                    modifier = Modifier.padding(
+                        horizontal = Tokens.spacing300,
+                        vertical = Tokens.spacing150,
+                    ),
+                )
+            },
+            onClickPrimaryButton = {
+                AppButton(
+                    buttonText = "刪除", // TODO: i18n
+                    buttonType = ButtonType.PRIMARY,
+                    buttonState = ButtonState.ENABLED,
+                    buttonSizeType = ButtonSizeType.Lg,
+                    isFullWidth = true,
+                    onClick = {
+                        viewModel.deleteQuizHistoryRecord(target.createdAt)
+                        if (selectedCreatedAt == target.createdAt) selectedCreatedAt = null
+                        pendingDelete = null
+                    },
+                )
+            },
+            onClickCancelButton = {
+                AppButton(
+                    buttonText = "取消", // TODO: i18n
+                    buttonType = ButtonType.TEXT_SECONDARY,
+                    buttonState = ButtonState.ENABLED,
+                    buttonSizeType = ButtonSizeType.Lg,
+                    isFullWidth = true,
+                    onClick = { pendingDelete = null },
+                )
+            },
+        )
     }
 }
 
@@ -1569,14 +1588,13 @@ internal fun CompanionHistoryScreen(
 private fun CompanionHistoryItem(
     record: QuizHistoryRecord,
     onClick: () -> Unit,
+    onDelete: () -> Unit,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .testTag("companion_history_item")
-            .clip(RoundedCornerShape(Tokens.radiusLg))
-            .border(1.dp, Tokens.colorBorderLight, RoundedCornerShape(Tokens.radiusLg))
-            .background(Tokens.colorWhite)
+            .glassSurface(shape = RoundedCornerShape(Tokens.radiusLg))
             .clickable { onClick() }
             .padding(Tokens.spacing200),
         verticalAlignment = Alignment.CenterVertically,
@@ -1614,10 +1632,13 @@ private fun CompanionHistoryItem(
             )
         }
         Icon(
-            painter = painterResource(Res.drawable.ic_arrow_right_line),
+            painter = painterResource(Res.drawable.ic_delete_line),
             contentDescription = null,
             tint = Tokens.colorTextMedium,
-            modifier = Modifier.size(Tokens.dimensionIconSm),
+            modifier = Modifier
+                .size(Tokens.dimensionIconSm)
+                .clickable(onClick = onDelete)
+                .testTag("companion_history_delete_btn"),
         )
     }
 }
@@ -1632,6 +1653,7 @@ private fun CompanionHistoryDetailContent(
     onGoHome: () -> Unit,
     onViewOthers: () -> Unit,
     onStartPlanning: () -> Unit,
+    onDelete: () -> Unit,
 ) {
     var showBottomSheet by remember { mutableStateOf(false) }
     val density = LocalDensity.current
@@ -1649,7 +1671,7 @@ private fun CompanionHistoryDetailContent(
         modifier = Modifier
             .fillMaxSize()
             .testTag("companion_history_detail_screen")
-            .background(Tokens.colorWhite),
+            .appGradientBackdrop(),
     ) {
         Column(
             modifier = Modifier
@@ -1670,7 +1692,6 @@ private fun CompanionHistoryDetailContent(
                         destinationCn = record.result.destinationCn,
                         destinationEn = record.result.destinationEn,
                         tagline = record.result.tagline,
-                        stampUrl = record.stampImageUrl,
                     )
                 }
                 HistoryDetailCloseButton(
@@ -1691,7 +1712,7 @@ private fun CompanionHistoryDetailContent(
                 .onGloballyPositioned { coordinates ->
                     bottomBarHeight = with(density) { coordinates.size.height.toDp() }
                 }
-                .background(Tokens.colorWhite)
+                .background(Color.White)
                 .navigationBarsPadding()
                 .padding(horizontal = Tokens.spacing300, vertical = Tokens.spacing200),
         ) {
@@ -1739,6 +1760,10 @@ private fun CompanionHistoryDetailContent(
                 showBottomSheet = false
                 onViewOthers()
             },
+            onDeleteRecord = {
+                showBottomSheet = false
+                onDelete()
+            },
         )
     }
 }
@@ -1750,9 +1775,7 @@ private fun HistoryDetailCloseButton(modifier: Modifier, onClick: () -> Unit) {
             .statusBarsPadding()
             .padding(top = Tokens.spacing150, end = Tokens.spacing150)
             .size(34.dp)
-            .clip(CircleShape)
-            .background(Color.Black.copy(alpha = 0.4f))
-            .border(1.dp, Color.White.copy(alpha = 0.4f), CircleShape)
+            .glassSurface(shape = CircleShape, fill = GlassStyle.fillTinted(Color.Black, alpha = 0.4f))
             .clickable(onClick = onClick)
             .testTag("companion_history_detail_close_btn"),
         contentAlignment = Alignment.Center,

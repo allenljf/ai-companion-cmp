@@ -448,11 +448,7 @@ class AiCompanionViewModel(
                 onSuccess = { result ->
                     if (result.isReady) {
                         _shareImageV2State.value = ShareImageV2State.Ready(result)
-                        backfillQuizHistoryShareImage(
-                            uuid = uuid,
-                            heroUrl = result.heroUrl.orEmpty(),
-                            stampUrl = result.stampUrl.orEmpty(),
-                        )
+                        backfillQuizHistoryHeroUrl(uuid, result.heroUrl.orEmpty())
                     } else {
                         _shareImageV2State.value = ShareImageV2State.Failed
                     }
@@ -467,15 +463,11 @@ class AiCompanionViewModel(
         _posterRevealed.value = true
     }
 
-    /** 產圖成功後回填對應那筆歷史紀錄的 hero／stamp 圖 URL，回顧列表/詳情頁才不用重打一次 35 秒的 API。 */
-    private suspend fun backfillQuizHistoryShareImage(uuid: String, heroUrl: String, stampUrl: String) {
+    /** 產圖成功後回填對應那筆歷史紀錄的 heroImageUrl，回顧列表/詳情頁才不用重打一次 35 秒的 API。 */
+    private suspend fun backfillQuizHistoryHeroUrl(uuid: String, heroUrl: String) {
         val records = getQuizHistoryUseCase().getOrNull().orEmpty()
         val updated = records.map { record ->
-            if (record.completionUuid == uuid) {
-                record.copy(heroImageUrl = heroUrl, stampImageUrl = stampUrl)
-            } else {
-                record
-            }
+            if (record.completionUuid == uuid) record.copy(heroImageUrl = heroUrl) else record
         }
         saveQuizHistoryUseCase(updated)
         _quizHistory.value = updated

@@ -47,7 +47,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 
 /**
- * 真後端信封：`{metadata:{status,desc}, data:{...}}`（見 T17 brief 與 migration/API_CONTRACT.md
+ * The remote API wraps payloads in `{metadata:{status,desc}, data:{...}}`.
  * 「實際部署差異」一節）。`desc` 成功時常是字串，失敗時常是字串陣列，統一用 JsonElement 收、
  * 用 [ApiMetadata.descText] 拉成一行塞進 [CompanionApiException]。
  */

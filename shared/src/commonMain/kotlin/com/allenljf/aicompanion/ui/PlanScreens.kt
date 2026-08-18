@@ -1,8 +1,8 @@
 package com.allenljf.aicompanion.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,6 +24,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -37,9 +39,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.allenljf.aicompanion.model.TravelDestinationOption
@@ -50,6 +56,9 @@ import com.allenljf.aicompanion.ui.components.ButtonSizeType
 import com.allenljf.aicompanion.ui.components.ButtonState
 import com.allenljf.aicompanion.ui.components.ButtonType
 import com.allenljf.aicompanion.ui.components.DialogHeaderType
+import com.allenljf.aicompanion.ui.components.GlassStyle
+import com.allenljf.aicompanion.ui.components.appGradientBackdrop
+import com.allenljf.aicompanion.ui.components.glassSurface
 import com.allenljf.aicompanion.viewmodel.AiCompanionViewModel
 import com.allenljf.aicompanion.viewmodel.CityChatUiMessage
 import com.allenljf.aicompanion.viewmodel.OrderOpeningState
@@ -90,7 +99,7 @@ internal fun PlanTopBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Tokens.colorWhite)
+            .glassSurface(shape = RectangleShape, fill = GlassStyle.fillClear)
             .statusBarsPadding()
             .height(56.dp)
             .padding(horizontal = Tokens.spacing100),
@@ -151,30 +160,22 @@ internal fun PlanChatBubble(
             )
             Spacer(Modifier.width(Tokens.spacing100))
         }
+        val bubbleShape = RoundedCornerShape(
+            topStart = if (fromMe) Tokens.radiusLg else Tokens.radiusSm,
+            topEnd = if (fromMe) Tokens.radiusSm else Tokens.radiusLg,
+            bottomStart = Tokens.radiusLg,
+            bottomEnd = Tokens.radiusLg,
+        )
         Box(
             modifier = Modifier
                 .widthIn(max = 280.dp)
-                .clip(
-                    RoundedCornerShape(
-                        topStart = if (fromMe) Tokens.radiusLg else Tokens.radiusSm,
-                        topEnd = if (fromMe) Tokens.radiusSm else Tokens.radiusLg,
-                        bottomStart = Tokens.radiusLg,
-                        bottomEnd = Tokens.radiusLg,
-                    ),
-                )
-                .background(
-                    if (fromMe) Tokens.colorBackgroundPrimaryLighter
-                    else Tokens.colorWhite,
-                )
-                .border(
-                    1.dp,
-                    if (fromMe) Tokens.colorBorderPrimaryLight else Tokens.colorBorderLight,
-                    RoundedCornerShape(
-                        topStart = if (fromMe) Tokens.radiusLg else Tokens.radiusSm,
-                        topEnd = if (fromMe) Tokens.radiusSm else Tokens.radiusLg,
-                        bottomStart = Tokens.radiusLg,
-                        bottomEnd = Tokens.radiusLg,
-                    ),
+                .glassSurface(
+                    shape = bubbleShape,
+                    fill = if (fromMe) {
+                        GlassStyle.fillTinted(Tokens.colorBackgroundPrimaryLighter)
+                    } else {
+                        GlassStyle.fillClear
+                    },
                 )
                 .padding(horizontal = Tokens.spacing150, vertical = Tokens.spacing100),
         ) {
@@ -215,15 +216,13 @@ internal fun PlanChoiceChip(
         fontWeight = FontWeight(Tokens.fontWeightMediumAndroid),
         modifier = Modifier
             .testTag(testTag)
-            .clip(RoundedCornerShape(999.dp))
-            .background(
-                if (solid) Tokens.colorBackgroundPrimaryButton
-                else Tokens.colorWhite,
-            )
-            .border(
-                1.dp,
-                Tokens.colorBorderPrimaryMedium,
-                RoundedCornerShape(999.dp),
+            .glassSurface(
+                shape = RoundedCornerShape(999.dp),
+                fill = if (solid) {
+                    GlassStyle.fillTinted(Tokens.colorBackgroundPrimaryButton)
+                } else {
+                    GlassStyle.fillClear
+                },
             )
             .clickable(onClick = onClick)
             .padding(horizontal = Tokens.spacing200, vertical = Tokens.spacing150),
@@ -238,10 +237,18 @@ internal fun PlanInputBar(
     placeholder: String = "想補充什麼跟我說…", // TODO: i18n
 ) {
     var text by remember { mutableStateOf("") }
+    val focusManager = LocalFocusManager.current
+    val submit = {
+        if (enabled && text.isNotBlank()) {
+            onSend(text)
+            text = ""
+            focusManager.clearFocus()
+        }
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Tokens.colorWhite)
+            .glassSurface(shape = RectangleShape, fill = GlassStyle.fillClear)
             .navigationBarsPadding()
             .padding(horizontal = Tokens.spacing200, vertical = Tokens.spacing150),
         verticalAlignment = Alignment.CenterVertically,
@@ -250,9 +257,7 @@ internal fun PlanInputBar(
             modifier = Modifier
                 .weight(1f)
                 .heightIn(min = 44.dp)
-                .clip(RoundedCornerShape(22.dp))
-                .border(1.dp, Tokens.colorBorderLight, RoundedCornerShape(22.dp))
-                .background(Tokens.colorBackgroundSurfaceLight)
+                .glassSurface(shape = RoundedCornerShape(22.dp))
                 .padding(horizontal = Tokens.spacing200, vertical = Tokens.spacing100),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -264,6 +269,8 @@ internal fun PlanInputBar(
                     color = Tokens.colorTextDarker,
                     fontSize = Tokens.fontSize3,
                 ),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { submit() }),
                 modifier = Modifier
                     .weight(1f)
                     .testTag("companion_plan_input"),
@@ -288,14 +295,16 @@ internal fun PlanInputBar(
         Box(
             modifier = Modifier
                 .size(44.dp)
-                .clip(CircleShape)
-                .background(
-                    if (enabled && text.isNotBlank()) Tokens.colorBackgroundPrimaryButton
-                    else Tokens.colorBackgroundSurfaceMedium,
+                .glassSurface(
+                    shape = CircleShape,
+                    fill = if (enabled && text.isNotBlank()) {
+                        GlassStyle.fillTinted(Tokens.colorBackgroundPrimaryButton)
+                    } else {
+                        GlassStyle.fillTinted(Tokens.colorBackgroundSurfaceMedium)
+                    },
                 )
                 .clickable(enabled = enabled && text.isNotBlank()) {
-                    onSend(text)
-                    text = ""
+                    submit()
                 }
                 .testTag("companion_plan_send_btn"),
             contentAlignment = Alignment.Center,
@@ -325,18 +334,22 @@ internal fun ImportItineraryScreen(
     onImport: (String) -> Unit,
 ) {
     var pastedText by remember { mutableStateOf("") }
+    val focusManager = LocalFocusManager.current
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Tokens.colorBackgroundSurfaceLight)
+            .appGradientBackdrop()
+            .pointerInput(Unit) {
+                detectTapGestures(onTap = { focusManager.clearFocus() })
+            }
             .testTag("companion_import_screen"),
     ) {
         // 標題列
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Tokens.colorWhite)
+                .glassSurface(shape = RectangleShape, fill = GlassStyle.fillClear)
                 .statusBarsPadding()
                 .padding(horizontal = Tokens.spacing200, vertical = Tokens.spacing100),
             verticalAlignment = Alignment.CenterVertically,
@@ -373,9 +386,7 @@ internal fun ImportItineraryScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 160.dp)
-                    .clip(RoundedCornerShape(Tokens.radiusLg))
-                    .border(1.dp, Tokens.colorBorderLight, RoundedCornerShape(Tokens.radiusLg))
-                    .background(Tokens.colorWhite)
+                    .glassSurface(shape = RoundedCornerShape(Tokens.radiusLg))
                     .padding(Tokens.spacing200),
             ) {
                 BasicTextField(
@@ -385,6 +396,8 @@ internal fun ImportItineraryScreen(
                         color = Tokens.colorTextDarker,
                         fontSize = Tokens.fontSize3,
                     ),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("companion_import_paste_input"),
@@ -421,7 +434,7 @@ internal fun ImportItineraryScreen(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Tokens.colorWhite)
+                .glassSurface(shape = RectangleShape, fill = GlassStyle.fillClear)
                 .navigationBarsPadding()
                 .padding(horizontal = Tokens.spacing300, vertical = Tokens.spacing200)
                 .testTag("companion_import_parse_btn"),
@@ -458,7 +471,7 @@ internal fun OrderOpeningScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Tokens.colorBackgroundSurfaceLight)
+            .appGradientBackdrop()
             .testTag("companion_order_opening_screen"),
     ) {
         PlanTopBar(
@@ -587,6 +600,7 @@ internal fun PlanChatScreen(
     onViewTrip: () -> Unit = {},
 ) {
     val scrollState = rememberScrollState()
+    val focusManager = LocalFocusManager.current
     LaunchedEffect(
         state,
         cityState.messages.size,
@@ -601,7 +615,10 @@ internal fun PlanChatScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Tokens.colorBackgroundSurfaceLight)
+            .appGradientBackdrop()
+            .pointerInput(Unit) {
+                detectTapGestures(onTap = { focusManager.clearFocus() })
+            }
             .testTag("companion_plan_chat_screen"),
     ) {
         PlanTopBar(

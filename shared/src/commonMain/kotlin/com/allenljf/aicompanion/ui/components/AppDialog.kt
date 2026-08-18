@@ -1,7 +1,7 @@
 package com.allenljf.aicompanion.ui.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,6 +17,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.window.Dialog
 import com.allenljf.aicompanion.theme.Tokens
@@ -37,6 +38,7 @@ fun AppDialog(
     headerType: DialogHeaderType,
     showFooterShadow: Boolean = true,
     showHeaderCloseButton: Boolean = true,
+    containerColor: Color? = null,
     onDismissRequest: (() -> Unit)? = null,
     content: @Composable () -> Unit,
     onClickPrimaryButton: (@Composable () -> Unit)? = null,
@@ -46,8 +48,10 @@ fun AppDialog(
         Column(
             modifier = Modifier
                 .fillMaxWidth(0.8f)
-                .clip(RoundedCornerShape(Tokens.radiusXl))
-                .background(Tokens.colorWhite),
+                .let { modifier ->
+                    if (containerColor != null) modifier.background(containerColor, RoundedCornerShape(Tokens.radiusXl))
+                    else modifier.glassSurface(shape = RoundedCornerShape(Tokens.radiusXl))
+                },
         ) {
             val title = when (headerType) {
                 is DialogHeaderType.Text -> headerType.title
@@ -76,8 +80,7 @@ fun AppDialog(
                         Box(
                             modifier = Modifier
                                 .size(Tokens.dimensionIconMd)
-                                .clip(RoundedCornerShape(50))
-                                .background(Tokens.colorBackgroundSurfaceLight)
+                                .glassSurface(shape = RoundedCornerShape(50))
                                 .clickable(
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = null,
@@ -102,7 +105,6 @@ fun AppDialog(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Tokens.colorWhite)
                         .padding(Tokens.spacing300),
                     horizontalArrangement = Arrangement.spacedBy(Tokens.spacing200),
                     verticalAlignment = Alignment.CenterVertically,

@@ -4,9 +4,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-// 從 reference/design-system/StyleDictionary.kt 機械轉錄的 57 個實際用到的 token。
-// 值必須與來源逐一一致，不做設計判斷；命名去 kk 前綴。
-// 來源清單：reference/design-system/USED_TOKENS.md
+// Shared visual tokens for the Compose UI.
 object Tokens {
     // Colors
     val colorBackgroundCriticalMedium = Color(0xffef7a70)

@@ -38,7 +38,7 @@ object CompanionMockConfig {
 
 /**
  * AI 旅伴 mock 資料來源。內容為寫實的繁體中文旅遊素材（東京／大阪／首爾等），
- * 供 Mock*Repository 組裝各支 API 的回應，形狀依 migration/API_CONTRACT.md。
+ * Provides deterministic API responses for the mock repositories.
  *
  * 檔案分工：這裡只放「資料」與純函式（挑選/組字），呼叫端的流程判斷（軟失敗開關、呼叫次數輪替）
  * 留在 Mock*Repository.kt。

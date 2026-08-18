@@ -41,15 +41,15 @@ import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
 /**
- * 手寫取代原始碼的 @ComponentScan annotation module（reference/android-src/feature/di/
- * AiCompanionAnnotationModule.kt）——本專案未接 koin-annotations/ksp，改逐一手綁。
+ * Handwritten Koin module. AiCompanionViewModel has more constructor parameters than
+ * viewModelOf supports, so this uses named arguments to prevent dependency ordering mistakes.
  *
  * AiCompanionViewModel 建構子 26 個參數，超過 viewModelOf 的 reified 上限（22），
  * 改用具名參數的 lambda 形式，同時避免 26 個 get() 因型別重複（多個 UseCase 共用
  * CompanionRepository）而互相對錯位。
  */
 // T17 真後端接入：單一開關決定 CompanionRepository/CompanionOrderRepository 走真後端還是 mock
-// （改 false 可離線跑 demo，見 migration/API_CONTRACT.md「實際部署差異」一節）。
+// Set false to run the demo against deterministic local data.
 private const val useRemoteApi = true
 
 val appModule = module {

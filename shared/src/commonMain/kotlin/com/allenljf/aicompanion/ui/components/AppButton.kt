@@ -1,6 +1,5 @@
 package com.allenljf.aicompanion.ui.components
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,13 +14,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.unit.dp
 import com.allenljf.aicompanion.theme.Tokens
 
 // 原 KKButton 支援 11 種 ButtonType / 4 種 ButtonState / 5 種 ButtonSizeType，
-// 但畫面實際只用到以下子集（見 reference/android-src/feature/presentation/compose/*.kt 呼叫點），
+// The app currently uses the following button variants.
 // 依 YAGNI 只實作這些 variant。
 
 enum class ButtonType {
@@ -54,7 +53,8 @@ fun AppButton(
     leadingIcon: Painter? = null,
 ) {
     val enabled = buttonState == ButtonState.ENABLED
-    val shape = RoundedCornerShape(Tokens.radiusMd)
+    val alphaScale = if (enabled) 1f else 0.5f
+    val shape = RoundedCornerShape(Tokens.radiusXl)
     val widthModifier = if (isFullWidth) Modifier.fillMaxWidth() else Modifier
     val fontSize = if (buttonSizeType == ButtonSizeType.Sm) Tokens.fontSize2 else Tokens.fontSize3
     val iconSize = if (buttonSizeType == ButtonSizeType.Sm) Tokens.dimensionIconXs else Tokens.dimensionIconSm
@@ -81,12 +81,15 @@ fun AppButton(
             onClick = onClick,
             enabled = enabled,
             shape = shape,
-            modifier = widthModifier,
+            modifier = widthModifier.glassSurface(
+                shape = shape,
+                fill = GlassStyle.fillTinted(Tokens.colorBackgroundPrimaryButton, alpha = 0.72f * alphaScale),
+            ),
             contentPadding = contentPadding,
             colors = ButtonDefaults.buttonColors(
-                containerColor = Tokens.colorBackgroundPrimaryButton,
+                containerColor = Color.Transparent,
                 contentColor = Tokens.colorWhite,
-                disabledContainerColor = Tokens.colorBackgroundPrimaryButton.copy(alpha = 0.5f),
+                disabledContainerColor = Color.Transparent,
                 disabledContentColor = Tokens.colorWhite.copy(alpha = 0.5f),
             ),
             content = { content() },
@@ -96,9 +99,9 @@ fun AppButton(
             onClick = onClick,
             enabled = enabled,
             shape = shape,
-            modifier = widthModifier,
+            modifier = widthModifier.glassSurface(shape = shape, borderAlpha = 0.6f * alphaScale),
             contentPadding = contentPadding,
-            border = BorderStroke(1.dp, if (enabled) Tokens.colorBorderLight else Tokens.colorBorderLight.copy(alpha = 0.4f)),
+            border = null,
             colors = ButtonDefaults.outlinedButtonColors(
                 contentColor = Tokens.colorTextDarker,
                 disabledContentColor = Tokens.colorTextDarker.copy(alpha = 0.4f),
@@ -110,9 +113,13 @@ fun AppButton(
             onClick = onClick,
             enabled = enabled,
             shape = shape,
-            modifier = widthModifier,
+            modifier = widthModifier.glassSurface(
+                shape = shape,
+                fill = GlassStyle.fillTinted(Tokens.colorBackgroundPrimaryLight, alpha = 0.5f * alphaScale),
+                borderAlpha = 0.6f * alphaScale,
+            ),
             contentPadding = contentPadding,
-            border = BorderStroke(1.dp, if (enabled) Tokens.colorBorderPrimaryMedium else Tokens.colorBorderPrimaryMedium.copy(alpha = 0.4f)),
+            border = null,
             colors = ButtonDefaults.outlinedButtonColors(
                 contentColor = Tokens.colorTextPrimaryDark,
                 disabledContentColor = Tokens.colorTextPrimaryDark.copy(alpha = 0.4f),

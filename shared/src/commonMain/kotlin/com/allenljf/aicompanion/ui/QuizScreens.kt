@@ -1,13 +1,5 @@
 package com.allenljf.aicompanion.ui
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -70,7 +62,6 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -101,13 +92,15 @@ import com.allenljf.aicompanion.ui.components.ButtonSizeType
 import com.allenljf.aicompanion.ui.components.ButtonState
 import com.allenljf.aicompanion.ui.components.ButtonType
 import com.allenljf.aicompanion.ui.components.DragHandle
+import com.allenljf.aicompanion.ui.components.GlassStyle
+import com.allenljf.aicompanion.ui.components.appGradientBackdrop
+import com.allenljf.aicompanion.ui.components.glassSurface
 import com.allenljf.aicompanion.viewmodel.AiCompanionViewModel
 import com.allenljf.aicompanion.viewmodel.CompanionCreationState
 import com.allenljf.aicompanion.viewmodel.IntroductionState
 import com.allenljf.aicompanion.viewmodel.PartnerState
 import com.allenljf.aicompanion.viewmodel.QuizGalleryState
 import com.allenljf.aicompanion.viewmodel.QuizState
-import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.painterResource
 import aicompanion.shared.generated.resources.Res
 import aicompanion.shared.generated.resources.ic_arrow_down_line
@@ -197,12 +190,14 @@ internal fun CreateCompanionScreen(
                 }
                 Spacer(Modifier.height(Tokens.spacing150))
             }
+            val stepScrollState = rememberScrollState()
+            LaunchedEffect(currentStep) { stepScrollState.scrollTo(0) }
             Column(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
-                    .background(Tokens.colorBackgroundSurfaceLight)
-                    .verticalScroll(rememberScrollState())
+                    .appGradientBackdrop()
+                    .verticalScroll(stepScrollState)
                     .padding(Tokens.spacing300),
             ) {
                 when (currentStep) {
@@ -565,9 +560,7 @@ private fun PersonalityDoneCard(creation: CompanionCreationState) {
         modifier = Modifier
             .fillMaxWidth()
             .testTag("companion_personality_done_card")
-            .clip(RoundedCornerShape(Tokens.radiusLg))
-            .border(1.dp, Tokens.colorBorderLight, RoundedCornerShape(Tokens.radiusLg))
-            .background(Tokens.colorWhite)
+            .glassSurface(shape = RoundedCornerShape(Tokens.radiusLg))
             .padding(horizontal = Tokens.spacing150, vertical = Tokens.spacing100),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -629,9 +622,7 @@ private fun DimensionCard(
             .fillMaxWidth()
             .testTag(testTag)
             .padding(bottom = Tokens.spacing150)
-            .border(1.dp, Tokens.colorBorderLight, RoundedCornerShape(Tokens.radiusLg))
-            .clip(RoundedCornerShape(Tokens.radiusLg))
-            .background(Tokens.colorWhite)
+            .glassSurface(shape = RoundedCornerShape(Tokens.radiusLg))
             .padding(Tokens.spacing200),
     ) {
         Column {
@@ -806,13 +797,15 @@ internal fun CompanionBornScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Tokens.colorWhite)
+            .appGradientBackdrop()
             .testTag("companion_born_screen"),
     ) {
+        val bornScrollState = rememberScrollState()
+        LaunchedEffect(Unit) { bornScrollState.scrollTo(0) }
         Column(
             modifier = Modifier
                 .weight(1f)
-                .verticalScroll(rememberScrollState()),
+                .verticalScroll(bornScrollState),
         ) {
             Box(
                 modifier = Modifier
@@ -841,8 +834,7 @@ internal fun CompanionBornScreen(
                         .statusBarsPadding()
                         .padding(Tokens.spacing200)
                         .size(40.dp)
-                        .clip(CircleShape)
-                        .background(Color.Black.copy(alpha = 0.4f)),
+                        .glassSurface(shape = CircleShape, fill = GlassStyle.fillTinted(Color.Black, alpha = 0.4f)),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
@@ -858,8 +850,7 @@ internal fun CompanionBornScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .offset(y = (-24).dp)
-                    .clip(RoundedCornerShape(topStart = Tokens.radiusXl, topEnd = Tokens.radiusXl))
-                    .background(Tokens.colorWhite)
+                    .glassSurface(shape = RoundedCornerShape(topStart = Tokens.radiusXl, topEnd = Tokens.radiusXl))
                     .padding(horizontal = Tokens.spacing300),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
@@ -902,8 +893,7 @@ internal fun CompanionBornScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(Tokens.radiusLg))
-                        .background(Tokens.colorBackgroundSurfaceLight)
+                        .glassSurface(shape = RoundedCornerShape(Tokens.radiusLg))
                         .padding(Tokens.spacing200),
                 ) {
                     Column {
@@ -983,9 +973,7 @@ private fun HomeIntentCard(
         modifier = Modifier
             .fillMaxWidth()
             .testTag(testTag)
-            .clip(RoundedCornerShape(Tokens.radiusXl))
-            .border(1.dp, Tokens.colorBorderLight, RoundedCornerShape(Tokens.radiusXl))
-            .background(Tokens.colorWhite)
+            .glassSurface(shape = RoundedCornerShape(Tokens.radiusXl))
             .then(if (onClick != null && !comingSoon) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(Tokens.spacing200),
     ) {
@@ -1059,9 +1047,7 @@ private fun SavedTripCard(trip: SavedTripRecord, onClick: () -> Unit) {
         modifier = Modifier
             .width(168.dp)
             .testTag("companion_home_saved_trip_card")
-            .clip(RoundedCornerShape(Tokens.radiusLg))
-            .border(1.dp, Tokens.colorBorderLight, RoundedCornerShape(Tokens.radiusLg))
-            .background(Tokens.colorWhite)
+            .glassSurface(shape = RoundedCornerShape(Tokens.radiusLg))
             .clickable(onClick = onClick),
     ) {
         Box(
@@ -1100,16 +1086,10 @@ private fun SavedTripCard(trip: SavedTripRecord, onClick: () -> Unit) {
             Text(
                 trip.title,
                 fontWeight = FontWeight(Tokens.fontWeightBold),
-                fontSize = Tokens.fontSize2,
+                fontSize = Tokens.fontSize1,
                 color = Tokens.colorTextDarker,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(Modifier.height(Tokens.spacing025))
-            Text(
-                "${trip.city}・一起排的", // TODO: i18n
-                fontSize = Tokens.fontSize1,
-                color = Tokens.colorTextMedium,
             )
         }
     }
@@ -1139,7 +1119,7 @@ internal fun CompanionHomeScreen(
         modifier = Modifier
             .fillMaxSize()
             .testTag("companion_home_screen")
-            .background(Tokens.colorBackgroundSurfaceLight)
+            .appGradientBackdrop()
             .verticalScroll(rememberScrollState())
             .navigationBarsPadding(),
     ) {
@@ -1262,9 +1242,7 @@ internal fun CompanionHomeScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .border(1.dp, Tokens.colorBorderLight, RoundedCornerShape(Tokens.radiusLg))
-                    .clip(RoundedCornerShape(Tokens.radiusLg))
-                    .background(Tokens.colorWhite)
+                    .glassSurface(shape = RoundedCornerShape(Tokens.radiusLg))
                     .padding(Tokens.spacing200),
             ) {
                 Column {
@@ -1382,8 +1360,8 @@ internal fun CompanionHomeScreen(
                 iconRes = painterResource(Res.drawable.ic_download_line),
                 iconTint = Tokens.colorTextPrimaryDark,
                 iconBackground = Tokens.colorBackgroundPrimaryLighter,
-                title = "匯入你的 AI 行程", // TODO: i18n
-                subtitle = "把 ChatGPT／其他 AI 排好的貼給我，或傳截圖，我幫你對上可訂體驗", // TODO: i18n
+                title = "匯入你的行程資料", // TODO: i18n
+                subtitle = "把 ChatGPT／其他 AI 排好的貼給我，我幫你安排類似行程", // TODO: i18n
                 testTag = "companion_home_import_btn",
                 onClick = onImportItinerary,
             )
@@ -1437,9 +1415,7 @@ internal fun CompanionHomeScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(Tokens.radiusXl))
-                    .border(1.dp, Tokens.colorBorderLight, RoundedCornerShape(Tokens.radiusXl))
-                    .background(Tokens.colorWhite)
+                    .glassSurface(shape = RoundedCornerShape(Tokens.radiusXl))
                     .padding(horizontal = Tokens.spacing200, vertical = Tokens.spacing150),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -1498,7 +1474,7 @@ private fun CompanionProfileBottomSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        containerColor = Color.White,
+        containerColor = GlassStyle.fillReadable,
         shape = RoundedCornerShape(
             topStart = Tokens.radiusXl,
             topEnd = Tokens.radiusXl,
@@ -1563,9 +1539,7 @@ private fun CompanionProfileBottomSheet(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = Tokens.spacing300)
-                        .clip(RoundedCornerShape(Tokens.radiusLg))
-                        .border(1.dp, Tokens.colorBorderLight, RoundedCornerShape(Tokens.radiusLg))
-                        .background(Tokens.colorBackgroundSurfaceLight)
+                        .glassSurface(shape = RoundedCornerShape(Tokens.radiusLg))
                         .padding(Tokens.spacing200)
                         .testTag("companion_profile_sheet_introduction"),
                 )
@@ -1590,7 +1564,7 @@ internal fun QuizGalleryScreen(
         modifier = Modifier
             .fillMaxSize()
             .testTag("companion_quiz_gallery_screen")
-            .background(Tokens.colorBackgroundSurfaceLight),
+            .appGradientBackdrop(),
     ) {
         Row(
             modifier = Modifier
@@ -1670,9 +1644,7 @@ private fun QuizGalleryCard(item: QuizGalleryItem, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .testTag("companion_quiz_gallery_card")
-            .clip(RoundedCornerShape(Tokens.radiusLg))
-            .border(1.dp, Tokens.colorBorderLight, RoundedCornerShape(Tokens.radiusLg))
-            .background(Tokens.colorWhite)
+            .glassSurface(shape = RoundedCornerShape(Tokens.radiusLg))
             .clickable(onClick = onClick),
     ) {
         // share_image_url 為 null 是正常狀態（尚未或未成功產過分享圖），以無圖漸層卡呈現，不當作載入失敗
@@ -1778,7 +1750,7 @@ internal fun QuizGalleryDetailScreen(item: QuizGalleryItem, onBack: () -> Unit) 
         modifier = Modifier
             .fillMaxSize()
             .testTag("companion_quiz_gallery_detail_screen")
-            .background(Tokens.colorWhite),
+            .appGradientBackdrop(),
     ) {
         Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
             // share_image_url 為 null 時略過圖片區塊，只呈現文字內容
@@ -1864,9 +1836,7 @@ internal fun QuizGalleryDetailScreen(item: QuizGalleryItem, onBack: () -> Unit) 
                         fontSize = Tokens.fontSize3,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(Tokens.radiusLg))
-                            .border(1.dp, Tokens.colorBorderLight, RoundedCornerShape(Tokens.radiusLg))
-                            .background(Tokens.colorBackgroundSurfaceLight)
+                            .glassSurface(shape = RoundedCornerShape(Tokens.radiusLg))
                             .padding(Tokens.spacing200)
                             .testTag("companion_quiz_gallery_detail_quote"),
                     )
@@ -1881,8 +1851,7 @@ internal fun QuizGalleryDetailScreen(item: QuizGalleryItem, onBack: () -> Unit) 
                 .statusBarsPadding()
                 .padding(Tokens.spacing200)
                 .size(40.dp)
-                .clip(CircleShape)
-                .background(Color.Black.copy(alpha = 0.4f))
+                .glassSurface(shape = CircleShape, fill = GlassStyle.fillTinted(Color.Black, alpha = 0.4f))
                 .clickable(onClick = onBack)
                 .testTag("companion_quiz_gallery_detail_back_btn"),
             contentAlignment = Alignment.Center,
@@ -1914,7 +1883,7 @@ internal fun QuizScreen(
         modifier = Modifier
             .fillMaxSize()
             .testTag("companion_quiz_screen")
-            .background(Tokens.colorBackgroundSurfaceLight),
+            .appGradientBackdrop(),
     ) {
         when (val q = quiz) {
             is QuizState.Loading, QuizState.Idle ->
@@ -1961,88 +1930,25 @@ internal fun QuizScreen(
     }
 }
 
-/**
- * 陪考小旅（mockup A-4）：右下角輕晃的旅伴頭像＋定時輪播的鼓勵泡泡，不攔截選項點擊。
- * 泡泡顯示約 6 秒、間隔 1 秒換下一句，循環播放。
- */
+/** Fixed companion avatar shown beside the current quiz question. */
 @Composable
 private fun QuizBuddy(
     avatarUrl: String,
     modifier: Modifier = Modifier,
 ) {
-    val bubbles = listOf(
-        "這題沒有標準答案，選你最想去的就好", // TODO: i18n
-        "憑直覺～我在旁邊陪你", // TODO: i18n
-        "偷偷說，我也喜歡第二張", // TODO: i18n
-        "再幾題，我就更懂你了！", // TODO: i18n
+    CompanionAsyncImage(
+        url = avatarUrl,
+        modifier = modifier
+            .size(56.dp)
+            .shadow(8.dp, CircleShape)
+            .clip(CircleShape)
+            .border(3.dp, Tokens.colorWhite, CircleShape)
+            .background(Tokens.colorBackgroundPrimaryLighter)
+            .testTag("companion_quiz_buddy"),
+        placeholder = {
+            Text("?", color = Tokens.colorTextPrimaryDark)
+        },
     )
-    var bubbleIndex by remember { mutableIntStateOf(0) }
-    var bubbleVisible by remember { mutableStateOf(true) }
-    LaunchedEffect(Unit) {
-        while (true) {
-            bubbleVisible = true
-            delay(6_000)
-            bubbleVisible = false
-            delay(1_000)
-            bubbleIndex = (bubbleIndex + 1) % bubbles.size
-        }
-    }
-
-    // 桌寵式輕晃：上下 6dp、左右 ±2 度，來回 2.4 秒
-    val bobTransition = rememberInfiniteTransition(label = "quizBuddyBob")
-    val bobProgress by bobTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(durationMillis = 1_200), RepeatMode.Reverse),
-        label = "quizBuddyBobProgress",
-    )
-
-    Column(
-        modifier = modifier.testTag("companion_quiz_buddy"),
-        horizontalAlignment = Alignment.End,
-    ) {
-        AnimatedVisibility(
-            visible = bubbleVisible,
-            enter = fadeIn(),
-            exit = fadeOut(),
-        ) {
-            Box(
-                modifier = Modifier
-                    .widthIn(max = 210.dp)
-                    .clip(
-                        RoundedCornerShape(
-                            topStart = Tokens.radiusLg,
-                            topEnd = Tokens.radiusLg,
-                            bottomStart = Tokens.radiusLg,
-                            bottomEnd = Tokens.radiusSm,
-                        ),
-                    )
-                    .background(Tokens.colorTextDarker)
-                    .padding(horizontal = Tokens.spacing150, vertical = Tokens.spacing100),
-            ) {
-                Text(
-                    bubbles[bubbleIndex],
-                    color = Tokens.colorWhite,
-                    fontSize = Tokens.fontSize2,
-                )
-            }
-        }
-        Spacer(Modifier.height(Tokens.spacing100))
-        CompanionAsyncImage(
-            url = avatarUrl,
-            modifier = Modifier
-                .offset(y = (-6 * bobProgress).dp)
-                .graphicsLayer { rotationZ = -2f + 4f * bobProgress }
-                .size(72.dp)
-                .shadow(8.dp, CircleShape)
-                .clip(CircleShape)
-                .border(3.dp, Tokens.colorWhite, CircleShape)
-                .background(Tokens.colorBackgroundPrimaryLighter),
-            placeholder = {
-                Text("?", color = Tokens.colorTextPrimaryDark)
-            },
-        )
-    }
 }
 
 @Composable
@@ -2058,7 +1964,7 @@ private fun QuizQuestionContent(
     avatarUrl: String = "",
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
-        // 頂部：返回 + 進度條 + 題號
+        // 頂部：返回 + 題號；進度條隨題目移到下方。
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -2078,18 +1984,6 @@ private fun QuizQuestionContent(
                 )
             }
             Spacer(Modifier.width(Tokens.spacing150))
-            LinearProgressIndicator(
-                progress = { (questionIndex + 1).toFloat() / totalCount },
-                modifier = Modifier
-                    .weight(1f)
-                    .height(6.dp)
-                    .clip(RoundedCornerShape(3.dp)),
-                color = Tokens.colorBackgroundPrimaryMedium,
-                trackColor = Tokens.colorBackgroundSurfaceMedium,
-                strokeCap = StrokeCap.Round,
-                drawStopIndicator = {},
-            )
-            Spacer(Modifier.width(Tokens.spacing150))
             Text(
                 "${questionIndex + 1}/$totalCount",
                 color = Tokens.colorTextPrimaryDark,
@@ -2100,27 +1994,56 @@ private fun QuizQuestionContent(
 
         // 題目 + 選項（可捲動）
         val scrollState = rememberScrollState()
+        LaunchedEffect(question.id) { scrollState.scrollTo(0) }
         val options = question.options
         val showScrollHint by remember {
             derivedStateOf { scrollState.maxValue > 0 && scrollState.value < scrollState.maxValue }
         }
         val remainingOptions = maxOf(0, options.size - 4)
 
-        Box(modifier = Modifier.weight(1f)) {
+        Column(modifier = Modifier.weight(1f)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Tokens.colorWhite)
+                    .padding(horizontal = Tokens.spacing300, vertical = Tokens.spacing150),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (avatarUrl.isNotBlank()) {
+                        QuizBuddy(avatarUrl = avatarUrl)
+                        Spacer(Modifier.width(Tokens.spacing150))
+                    }
+                    Text(
+                        question.text,
+                        fontWeight = FontWeight(Tokens.fontWeightBold),
+                        fontSize = Tokens.fontSize5,
+                        color = Tokens.colorTextDarker,
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("companion_quiz_question_text"),
+                    )
+                }
+                Spacer(Modifier.height(Tokens.spacing150))
+                LinearProgressIndicator(
+                    progress = { (questionIndex + 1).toFloat() / totalCount },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(3.dp)),
+                    color = Tokens.colorBackgroundPrimaryMedium,
+                    trackColor = Tokens.colorBackgroundSurfaceMedium,
+                    strokeCap = StrokeCap.Round,
+                    drawStopIndicator = {},
+                )
+            }
+
+            Box(modifier = Modifier.weight(1f)) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(scrollState)
                     .padding(horizontal = Tokens.spacing300),
             ) {
-                Spacer(Modifier.height(Tokens.spacing200))
-                Text(
-                    question.text,
-                    fontWeight = FontWeight(Tokens.fontWeightBold),
-                    fontSize = Tokens.fontSize5,
-                    color = Tokens.colorTextDarker,
-                    modifier = Modifier.testTag("companion_quiz_question_text"),
-                )
                 Spacer(Modifier.height(Tokens.spacing200))
 
                 // 2 欄圖卡 grid
@@ -2152,8 +2075,7 @@ private fun QuizQuestionContent(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .padding(bottom = Tokens.spacing100)
-                        .clip(RoundedCornerShape(Tokens.radiusMd))
-                        .background(Tokens.colorWhite.copy(alpha = 0.9f))
+                        .glassSurface(shape = RoundedCornerShape(Tokens.radiusMd))
                         .padding(horizontal = Tokens.spacing150, vertical = Tokens.spacing075),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -2173,13 +2095,6 @@ private fun QuizQuestionContent(
                 }
             }
 
-            if (avatarUrl.isNotBlank()) {
-                QuizBuddy(
-                    avatarUrl = avatarUrl,
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(end = Tokens.spacing150, bottom = Tokens.spacing150),
-                )
             }
         }
 

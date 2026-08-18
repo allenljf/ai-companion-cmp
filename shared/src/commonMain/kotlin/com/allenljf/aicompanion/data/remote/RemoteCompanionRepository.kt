@@ -43,7 +43,7 @@ import com.allenljf.aicompanion.model.toTripPlanOrderRequest
  * （這幾支後端本來就沒有對應端點，見 CompanionRepository 介面上的註解）。
  *
  * API 規格 personality 為單一字串（`List<String>` 是 ViewModel 這端的多選歷史包袱，見
- * migration/API_CONTRACT.md），一律取第一個。
+ * The client uses the first available result.
  */
 class RemoteCompanionRepository(
     private val client: CompanionApiClient,
